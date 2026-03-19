@@ -327,7 +327,6 @@ _assert_runtime_ingress_event(type_id type, const capture_point *cp)
             ASSERT(cp->task_create != NULL || cp->payload == NULL);
             break;
         case EVENT_CALL:
-            break;
         case EVENT_TASK_BLOCK:
             break;
         case EVENT_TASK_DETACH:
