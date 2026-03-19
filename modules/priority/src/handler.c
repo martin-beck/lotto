@@ -8,7 +8,6 @@
  * is not maximum
  */
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
-#include "category.h"
 #include "state.h"
 #include <dice/module.h>
 #include <lotto/base/tidmap.h>
@@ -16,12 +15,10 @@
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/priority/context_payload.h>
 #include <lotto/modules/priority/events.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
-#include <lotto/util/once.h>
-
-static category_t CAT_PRIORITY;
 
 typedef struct {
     tiditem_t t;
@@ -77,7 +74,6 @@ _is_max_priority(task_id task)
 STATIC void
 _priority_handle(const context_t *ctx, event_t *e)
 {
-    once(CAT_PRIORITY = priority_category());
     ASSERT(e);
     if (e->skip || !priority_config()->enabled)
         return;
@@ -85,27 +81,19 @@ _priority_handle(const context_t *ctx, event_t *e)
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
     task_t *t = NULL;
-    switch (ctx->cat) {
-        case CAT_TASK_FINI:
-            tidmap_deregister(&_state.map, ctx->id);
-            ASSERT(!tidset_has(&e->tset, ctx->id));
-            break;
-
-        case CAT_TASK_INIT:
-            t = (task_t *)tidmap_find(&_state.map, ctx->id);
-            ASSERT(t == NULL);
-            t = (task_t *)tidmap_register(&_state.map, ctx->id);
-            ASSERT(t);
-            t->priority = 0;
-            break;
-        default:
-            if (ctx->cat != CAT_PRIORITY) {
-                break;
-            }
-            t = (task_t *)tidmap_find(&_state.map, ctx->id);
-            ASSERT(t);
-            t->priority = context_priority_value(ctx);
-            break;
+    if (context_is_task_fini(ctx)) {
+        tidmap_deregister(&_state.map, ctx->id);
+        ASSERT(!tidset_has(&e->tset, ctx->id));
+    } else if (context_is_task_init(ctx)) {
+        t = (task_t *)tidmap_find(&_state.map, ctx->id);
+        ASSERT(t == NULL);
+        t = (task_t *)tidmap_register(&_state.map, ctx->id);
+        ASSERT(t);
+        t->priority = 0;
+    } else if (context_is_priority_event(ctx)) {
+        t = (task_t *)tidmap_find(&_state.map, ctx->id);
+        ASSERT(t);
+        t->priority = context_priority_value(ctx);
     }
     if (e->readonly || e->skip) {
         return;

@@ -1,6 +1,7 @@
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "state.h"
 #include <lotto/engine/dispatcher.h>
+#include <lotto/runtime/memaccess_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -19,26 +20,26 @@ _atomic_handle(const context_t *ctx, event_t *e)
         return;
 
     // NOLINTBEGIN(bugprone-branch-clone): Fixme - Fix and remove no lint line
-    switch (ctx->cat) {
-        case CAT_BEFORE_AREAD:
-        case CAT_BEFORE_AWRITE:
-        case CAT_BEFORE_XCHG:
-        case CAT_BEFORE_CMPXCHG:
-        case CAT_BEFORE_RMW:
-        case CAT_BEFORE_FENCE:
+    switch (context_memaccess_event(ctx)) {
+        case CONTEXT_MA_BEFORE_AREAD:
+        case CONTEXT_MA_BEFORE_AWRITE:
+        case CONTEXT_MA_BEFORE_XCHG:
+        case CONTEXT_MA_BEFORE_CMPXCHG:
+        case CONTEXT_MA_BEFORE_RMW:
+        case CONTEXT_MA_BEFORE_FENCE:
             if (!e->is_chpt) {
                 e->reason  = REASON_DETERMINISTIC;
                 e->is_chpt = true;
             }
             break;
 
-        case CAT_AFTER_AREAD:
-        case CAT_AFTER_AWRITE:
-        case CAT_AFTER_XCHG:
-        case CAT_AFTER_RMW:
-        case CAT_AFTER_CMPXCHG_S:
-        case CAT_AFTER_CMPXCHG_F:
-        case CAT_AFTER_FENCE:
+        case CONTEXT_MA_AFTER_AREAD:
+        case CONTEXT_MA_AFTER_AWRITE:
+        case CONTEXT_MA_AFTER_XCHG:
+        case CONTEXT_MA_AFTER_RMW:
+        case CONTEXT_MA_AFTER_CMPXCHG_S:
+        case CONTEXT_MA_AFTER_CMPXCHG_F:
+        case CONTEXT_MA_AFTER_FENCE:
         default:
             break;
             // NOLINTEND(bugprone-branch-clone)

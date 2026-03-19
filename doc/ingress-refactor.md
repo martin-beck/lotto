@@ -133,6 +133,13 @@ instead of re-packing everything into `ctx.args[]`. The current direct
 - mutex
 - rwlock
 - evec
+- join
+- poll
+- priority
+- task velocity
+- region preemption
+- deadlock
+- generic memaccess consumers (`race`, `pos`, `enforce`)
 
 ### Core/runtime-owned ingress
 
@@ -146,6 +153,15 @@ The runtime bridge currently handles core ingress events such as:
 - key create
 - key delete
 - set specific
+
+Those core ingress events now keep their actual payload only in `ctx->cp`.
+The runtime bridge still stamps `ctx->cat`, `ctx->type`, and `ctx->src_type`,
+but it no longer reconstructs legacy `ctx.args[]` for the core ingress cases
+that already have shared payload accessors.
+
+The runtime center has also started preferring semantic ingress `type` for its
+own core cases (`TASK_INIT`, `TASK_FINI`, `TASK_CREATE`, `CALL`, `DETACH`,
+`KEY_*`, `SET_SPECIFIC`) and only falls back to `cat` for compatibility.
 
 ### Sequencer-side handler subscriptions
 
@@ -205,6 +221,17 @@ This reduces the amount of module-specific data that has to be reconstructed
 through `ctx.args[]` and is the current bridge from the old runtime model to
 the future one.
 
+For TSAN/memaccess specifically, the bridge now forwards the raw Dice
+memaccess payload as the `capture_point` payload and only chooses the Lotto
+semantic category. That keeps memaccess generic instead of re-packing it into
+module-local argument layouts.
+
+For Rust await/spin specifically, the bridge now treats them as ordinary
+normalized event types (`EVENT_AWAIT`, `EVENT_SPIN_START`, `EVENT_SPIN_END`)
+instead of using Rust-only custom category identities as the semantic key.
+Their Rust-side parser dispatch is now keyed by event type, not by category
+number.
+
 ## Why `category_t` Still Exists
 
 `category_t` is no longer the desired semantic boundary, but it is still needed
@@ -215,6 +242,14 @@ because:
 - the old runtime bridge still reconstructs `context_t`
 
 So `cat` is currently a compatibility field on the old side of ingress.
+
+The remaining category-heavy areas are now smaller and more explicit:
+
+- dynamic/policy-chosen Rust categories where no stable event-type mapping
+  exists yet
+- a few yield/policy shims where the same event id can still imply more than
+  one legacy category
+- QEMU, which is intentionally out of scope for this refactor wave
 
 ## Planned Direction
 

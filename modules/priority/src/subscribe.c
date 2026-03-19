@@ -3,7 +3,6 @@
 #include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include "category.h"
 #include <lotto/engine/pubsub.h>
 #include <lotto/base/context.h>
 #include <lotto/modules/priority/events.h>
@@ -11,16 +10,12 @@
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
-#include <lotto/util/once.h>
-
-static category_t CAT_PRIORITY;
 
 PS_ADVERTISE_TYPE(EVENT_PRIORITY)
 
 static void
 _lotto_priority(int64_t priority)
 {
-    once(CAT_PRIORITY = priority_category());
     context_t ctx       = *ctx(.self = self_md(), .func = __FUNCTION__);
     priority_event_t ev = {.priority = priority};
     capture_point cp    = {.src_type = EVENT_PRIORITY, .payload = &ev};
@@ -71,7 +66,6 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    once(CAT_PRIORITY = priority_category());
-    runtime_ingress_module_submit(origin, cp, CAT_PRIORITY);
+    runtime_ingress_module_submit_event(origin, cp, EVENT_PRIORITY);
     return PS_OK;
 })

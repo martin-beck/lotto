@@ -34,7 +34,10 @@ lotto_yield(bool advisory)
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_LOTTO_YIELD, {
     yield_event_t *ev = EVENT_PAYLOAD(event);
     context_t ctx    = *ctx(.self = self_md(), .func = "lotto_yield");
-    capture_point cp = {.src_type = EVENT_LOTTO_YIELD, .payload = ev};
+    capture_point cp = {
+        .src_type = ev->advisory ? EVENT_SYS_YIELD : EVENT_USER_YIELD,
+        .payload  = ev,
+    };
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
@@ -42,13 +45,13 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_LOTTO_YIELD, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    if (cp->src_type != EVENT_LOTTO_YIELD) {
-        return PS_OK;
+    switch (cp->src_type) {
+        case EVENT_USER_YIELD:
+        case EVENT_SYS_YIELD:
+            runtime_ingress_module_submit_auto(origin, cp);
+            break;
+        default:
+            break;
     }
-
-    yield_event_t *ev = cp->payload;
-    runtime_ingress_module_submit(origin, cp,
-                                  ev->advisory ? CAT_SYS_YIELD :
-                                                 CAT_USER_YIELD);
     return PS_OK;
 })

@@ -23,6 +23,7 @@
 #include <lotto/engine/sequencer.h>
 #include <lotto/engine/state.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/real.h>
@@ -49,6 +50,7 @@ typedef struct {
     uint64_t switch_count;
     bool last_chpt;
     category_t prev_cat;
+    context_core_event_t prev_core;
     type_id prev_type;
     type_id prev_src_type;
 
@@ -86,6 +88,7 @@ sequencer_reset(void)
     _seq.prev_task     = NO_TASK;
     _seq.next_task     = NO_TASK;
     _seq.prev_cat      = CAT_NONE;
+    _seq.prev_core     = CONTEXT_CORE_NONE;
     _seq.prev_type     = 0;
     _seq.prev_src_type = 0;
     const char *var    = getenv("LOTTO_DEBUG_CLK_BOUND");
@@ -122,6 +125,7 @@ plan_t
 sequencer_capture(const context_t *ctx)
 {
     ASSERT(ctx->id != NO_TASK);
+    category_t cat = context_effective_category(ctx);
 
     _seq.clk++;
 #ifdef QLOTTO_ENABLED
@@ -155,7 +159,7 @@ sequencer_capture(const context_t *ctx)
 
     switch (ry.status) {
         case REPLAY_LOAD:
-            ASSERT(next == ANY_TASK || next == ry.id || CAT_BLOCK(ctx->cat));
+            ASSERT(next == ANY_TASK || next == ry.id || context_is_blocking(ctx));
             next = ry.id;
             break;
         case REPLAY_FORCE:
@@ -164,7 +168,7 @@ sequencer_capture(const context_t *ctx)
         case REPLAY_DONE:
             break;
         case REPLAY_CONT:
-            if (sequencer_config()->slack > 0 && CAT_SLACK(ctx->cat)) {
+            if (sequencer_config()->slack > 0 && context_has_slack(ctx)) {
                 next = ctx->id;
             }
             break;
@@ -184,7 +188,7 @@ sequencer_capture(const context_t *ctx)
         .next            = next,
         .any_task_filter = e.any_task_filter,
         .reason          = e.reason,
-        .with_slack      = CAT_SLACK(ctx->cat) && e.replay == REPLAY_DONE,
+        .with_slack      = context_has_slack(ctx) && e.replay == REPLAY_DONE,
         .replay_type     = replay_type,
     };
 
@@ -196,7 +200,8 @@ sequencer_capture(const context_t *ctx)
     _seq.should_record =
         e.should_record || _granularity_should_record(ctx, &e, &p);
     _seq.next_task = next;
-    _seq.prev_cat  = ctx->cat;
+    _seq.prev_cat  = cat;
+    _seq.prev_core = context_core_event(ctx);
     _seq.prev_type = ctx->type;
     _seq.prev_src_type = ctx->src_type;
 
@@ -230,14 +235,16 @@ sequencer_resume(const context_t *ctx)
     PS_PUBLISH(CHAIN_SEQUENCER_RESUME, EVENT_SEQUENCER_RESUME, &val, 0);
     if (_seq.clk == 0)
         return;
-    if (ctx->id == 1 && ctx->cat == CAT_NONE)
+    if (ctx->id == 1 && context_effective_category(ctx) == CAT_NONE)
         return;
 
     if (_seq.should_record ||
-        (sequencer_config()->slack > 0 && CAT_SLACK(_seq.prev_cat) &&
+        (sequencer_config()->slack > 0 &&
+         (_seq.prev_core == CONTEXT_CORE_CALL || _seq.prev_cat == CAT_TASK_BLOCK) &&
          ctx->id != _seq.prev_task) ||
-        (_seq.prev_cat != CAT_TASK_CREATE &&
-         (sequencer_config()->slack == 0 || !CAT_SLACK(_seq.prev_cat)) &&
+        (_seq.prev_core != CONTEXT_CORE_TASK_CREATE &&
+         (sequencer_config()->slack == 0 ||
+          !(_seq.prev_core == CONTEXT_CORE_CALL || _seq.prev_cat == CAT_TASK_BLOCK)) &&
          _seq.next_task != ctx->id)) {
         recorder_record(ctx, _seq.clk);
     }
@@ -248,7 +255,7 @@ sequencer_resume(const context_t *ctx)
 void
 sequencer_return(const context_t *ctx)
 {
-    ASSERT(CAT_BLOCK(ctx->cat));
+    ASSERT(context_is_blocking(ctx));
     _add_pending_unblocked(ctx->id);
 }
 
@@ -272,29 +279,36 @@ sequencer_get_clk()
 static inline unsigned
 _actions_for(const context_t *ctx, task_id next, const event_t *e)
 {
-    switch (ctx->cat) {
-        case CAT_TASK_CREATE:
+    category_t cat = context_effective_category(ctx);
+    switch (context_core_event(ctx)) {
+        case CONTEXT_CORE_TASK_CREATE:
             ASSERT(e->replay || next == ANY_TASK);
             return ACTION_CALL | ACTION_YIELD | ACTION_RESUME;
-
-        case CAT_CALL:
+        case CONTEXT_CORE_CALL:
             ASSERT(next != NO_TASK);
             return ACTION_WAKE | ACTION_CALL | ACTION_RETURN | ACTION_YIELD |
                    ACTION_RESUME;
+        case CONTEXT_CORE_TASK_INIT:
+            ASSERT(next != NO_TASK);
+            return ACTION_WAKE | ACTION_YIELD | ACTION_RESUME;
+        case CONTEXT_CORE_TASK_FINI:
+            ASSERT(next != NO_TASK);
+            return ACTION_WAKE;
+        default:
+            break;
+    }
 
+    switch (cat) {
         case CAT_TASK_BLOCK:
             ASSERT(next != NO_TASK);
             return ACTION_WAKE | ACTION_BLOCK | ACTION_RETURN | ACTION_YIELD |
                    ACTION_RESUME;
 
-        case CAT_TASK_INIT:
-            ASSERT(next != NO_TASK);
-            return ACTION_WAKE | ACTION_YIELD | ACTION_RESUME;
+        default:
+            break;
+    }
 
-        case CAT_TASK_FINI:
-            ASSERT(next != NO_TASK);
-            return ACTION_WAKE;
-
+    switch (cat) {
         default:
 #ifdef LOTTO_SEQUENCER_CONTINUE
             if (next != ctx->id && cp->wait_exact)

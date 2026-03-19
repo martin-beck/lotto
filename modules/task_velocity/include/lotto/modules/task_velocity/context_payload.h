@@ -10,12 +10,22 @@
 #include <lotto/base/context.h>
 #include <lotto/modules/task_velocity/events.h>
 #include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_payload.h>
+
+static inline bool
+context_is_task_velocity_event(const context_t *ctx)
+{
+    if (context_has_event_type(ctx, EVENT_TASK_VELOCITY)) {
+        return true;
+    }
+    return ctx->cat == CAT_TASK_VELOCITY;
+}
 
 static inline uint64_t
 context_task_velocity_probability(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx) &&
-        ctx->src_type == EVENT_TASK_VELOCITY) {
+    if (context_has_event_type(ctx, EVENT_TASK_VELOCITY) &&
+        context_has_capture_point(ctx)) {
         return (uint64_t)
             ((task_velocity_event_t *)ctx->cp->payload)->probability;
     }

@@ -77,7 +77,7 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    (void)runtime_ingress_module_submit_before(origin, cp, CAT_CALL);
+    (void)runtime_ingress_module_submit_before_auto(origin, cp);
     return PS_OK;
 })
 
@@ -89,6 +89,6 @@ PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    runtime_ingress_module_submit_after(origin, cp, CAT_CALL);
+    runtime_ingress_module_submit_after_auto(origin, cp);
     return PS_OK;
 })

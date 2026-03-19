@@ -79,6 +79,6 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    runtime_ingress_module_submit(origin, cp, CAT_POLL);
+    runtime_ingress_module_submit_auto(origin, cp);
     return PS_OK;
 })

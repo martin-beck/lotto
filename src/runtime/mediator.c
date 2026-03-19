@@ -26,7 +26,7 @@
 #define CAPTURE_ALLOWED(m, ctx)                                                \
     ((m)->registration_status == MEDIATOR_REGISTRATION_DONE ||                 \
      ((m)->registration_status == MEDIATOR_REGISTRATION_EXEC &&                \
-      (ctx)->cat == CAT_TASK_INIT))
+      context_is_task_init(ctx)))
 
 task_id next_task_id(void);
 bool _enter_capture(mediator_t *m);
@@ -78,8 +78,9 @@ _mediator_dtor(void *arg)
     sys_pthread_setspecific(key, NULL);
 
     if (m->registration_status == MEDIATOR_REGISTRATION_DONE) {
-        context_t *ctx =
-            ctx(.id = m->id, .func = __FUNCTION__, .cat = CAT_TASK_FINI);
+        context_t *ctx = ctx(.id = m->id, .func = __FUNCTION__);
+        *ctx           = context_with_types(*ctx, EVENT_TASK_FINI,
+                                            EVENT_TASK_FINI, CAT_NONE);
         if (!mediator_capture(m, ctx)) {
             switch (mediator_resume(m, ctx)) {
                 case MEDIATOR_OK:
@@ -249,10 +250,10 @@ mediator_capture(mediator_t *m, context_t *ctx)
     ASSERT(!m->finito);
     ctx->id = m->id;
     if (!_guard_capture(m, ctx)) {
-        switch (ctx->cat) {
-            case CAT_CALL:
-            case CAT_TASK_CREATE:
-                mediator_detach(m);
+        switch (context_core_event(ctx)) {
+            case CONTEXT_CORE_CALL:
+            case CONTEXT_CORE_TASK_CREATE:
+            mediator_detach(m);
                 return true;
             default:
                 break;
@@ -263,8 +264,8 @@ mediator_capture(mediator_t *m, context_t *ctx)
     if (self_retired(md))
         return false;
 
-    switch (ctx->cat) {
-        case CAT_KEY_CREATE:
+    switch (context_core_event(ctx)) {
+        case CONTEXT_CORE_KEY_CREATE:
             ASSERT(ndestructors < MEDIATOR_DESTRUCTOR_CAP &&
                    "increase MEDIATOR_DESTRUCTOR_CAP");
             destructors[ndestructors++] = (struct mediator_destructor){
@@ -272,8 +273,7 @@ mediator_capture(mediator_t *m, context_t *ctx)
                 .destructor = context_key_destructor(ctx)};
             _leave_capture(m);
             return true;
-
-        case CAT_KEY_DELETE: {
+        case CONTEXT_CORE_KEY_DELETE: {
             pthread_key_t key = context_key_value(ctx);
             for (size_t i = 0; i < ndestructors; i++) {
                 if (destructors[i].key != key) {
@@ -285,8 +285,7 @@ mediator_capture(mediator_t *m, context_t *ctx)
             _leave_capture(m);
             return true;
         }
-
-        case CAT_SET_SPECIFIC: {
+        case CONTEXT_CORE_SET_SPECIFIC: {
             struct mediator_value value = (struct mediator_value){
                 .key   = context_key_value(ctx),
                 .value = context_set_specific_value(ctx)};
@@ -305,7 +304,6 @@ mediator_capture(mediator_t *m, context_t *ctx)
             _leave_capture(m);
             return true;
         }
-
         default:
             break;
     }
@@ -343,7 +341,7 @@ mediator_capture(mediator_t *m, context_t *ctx)
     while (!plan_done(&m->plan));
 
     // only when the task finishes
-    ASSERT(ctx->cat == CAT_TASK_FINI);
+    ASSERT(context_is_task_fini(ctx));
 
     return true;
 }
@@ -424,7 +422,7 @@ mediator_return(mediator_t *m, context_t *ctx)
     ASSERT(!m->finito);
     ctx->id = m->id;
 
-    if (ctx->cat == CAT_TASK_CREATE) {
+    if (context_is_task_create(ctx)) {
         ASSERT(_should_resume(m));
         return;
     }

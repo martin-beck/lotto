@@ -7,6 +7,7 @@
 #include <lotto/check.h>
 #include <lotto/engine/catmgr.h>
 #include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/mediator.h>
@@ -75,12 +76,14 @@ get_mediator(bool new_task)
     }
     m->registration_status = MEDIATOR_REGISTRATION_EXEC;
     logger_debugf("[%lu] register new task\n", m->id);
-    context_t *ctx           = ctx(.func = __FUNCTION__, .cat = CAT_NONE);
+    context_t *ctx           = ctx(.func = __FUNCTION__);
     mediator_status_t status = mediator_resume(m, ctx);
     ASSERT((status == MEDIATOR_OK) && "mediator_init failed");
     if (!new_task) {
         /* take over task initialization */
-        ctx = ctx(.func = __FUNCTION__, .cat = CAT_TASK_INIT);
+        ctx  = ctx(.func = __FUNCTION__);
+        *ctx = context_with_types(*ctx, EVENT_TASK_INIT, EVENT_TASK_INIT,
+                                  CAT_NONE);
         ENSURE(!mediator_capture(m, ctx) &&
                "expected mediator_capture to return false");
         _intercept_resume(m, ctx);
@@ -99,7 +102,7 @@ static void
 _intercept_resume(mediator_t *m, context_t *ctx)
 {
     logger_debugf("[%lu] prepare to resume %s\n", m->id,
-                  category_str(ctx->cat));
+                  category_str(context_effective_category(ctx)));
 
     switch (mediator_resume(m, ctx)) {
         case MEDIATOR_OK:
@@ -139,7 +142,7 @@ runtime_ingress(context_t *ctx)
     if (!lotto_intercept_initialized())
         return;
 
-    mediator_t *m = get_mediator(ctx->cat == CAT_TASK_INIT);
+    mediator_t *m = get_mediator(context_is_task_init(ctx));
 
     if (!mediator_capture(m, ctx))
         _intercept_resume(m, ctx);
@@ -210,7 +213,8 @@ intercept_lookup_call(const char *func)
         return foo;
     }
 
-    context_t *ctx = ctx(.func = func, .cat = CAT_CALL);
+    context_t *ctx = ctx(.func = func);
+    *ctx           = context_with_types(*ctx, EVENT_CALL, EVENT_CALL, CAT_NONE);
     (void)runtime_ingress_before(ctx);
 
     logger_debugf("[%lu] lookup call '%s'\n", ctx->id, func);
@@ -262,71 +266,33 @@ _bridge_ingress_event(const context_t *origin, type_id type,
     ASSERT(cp != NULL);
 
     context_t ctx = *origin;
-    ctx.type      = type;
-    ctx.src_type  = cp->src_type;
     ctx.cp        = (capture_point *)cp;
+    ctx           = context_with_types(ctx, type, cp->src_type, CAT_NONE);
 
     switch (type) {
-        case EVENT_KEY_CREATE: {
-            capture_key_create_event *ev = cp->key_create;
-            ASSERT(ev != NULL);
-            ctx.cat     = CAT_KEY_CREATE;
-            ctx.args[0] = arg_ptr(ev->key);
-            ctx.args[1] = arg_ptr(ev->destructor);
+        case EVENT_KEY_CREATE:
+            ASSERT(cp->key_create != NULL);
             break;
-        }
-        case EVENT_TASK_INIT: {
-            capture_task_init_event *ev = cp->task_init;
-            ASSERT(ev != NULL);
-            ctx.cat     = CAT_TASK_INIT;
-            ctx.args[0] = arg(uintptr_t, ev->thread);
-            ctx.args[1] = arg(bool, ev->detached);
+        case EVENT_TASK_INIT:
+            ASSERT(cp->task_init != NULL);
             break;
-        }
-        case EVENT_TASK_FINI: {
-            capture_task_fini_event *ev = cp->task_fini;
-            ASSERT(ev != NULL);
-            ctx.cat     = CAT_TASK_FINI;
-            ctx.args[0] = arg_ptr(ev->ptr);
+        case EVENT_TASK_FINI:
+            ASSERT(cp->task_fini != NULL);
             break;
-        }
-        case EVENT_TASK_CREATE: {
-            capture_task_create_event *ev = cp->task_create;
-            ASSERT(ev != NULL || cp->payload == NULL);
-            ctx.cat = CAT_TASK_CREATE;
-            if (ev != NULL) {
-                ctx.args[0] = arg_ptr(ev->thread);
-                ctx.args[1] = arg_ptr(ev->attr);
-                ctx.args[2] = arg_ptr(ev->run);
-            }
+        case EVENT_TASK_CREATE:
+            ASSERT(cp->task_create != NULL || cp->payload == NULL);
             break;
-        }
         case EVENT_CALL:
-            ctx.cat = CAT_CALL;
             break;
-        case EVENT_TASK_DETACH: {
-            capture_task_detach_event *ev = cp->task_detach;
-            ASSERT(ev != NULL);
-            ctx.cat     = CAT_DETACH;
-            ctx.args[0] = arg(uint64_t, ev->thread);
-            ctx.args[1] = arg_ptr(ev->ret);
+        case EVENT_TASK_DETACH:
+            ASSERT(cp->task_detach != NULL);
             break;
-        }
-        case EVENT_KEY_DELETE: {
-            capture_key_delete_event *ev = cp->key_delete;
-            ASSERT(ev != NULL);
-            ctx.cat     = CAT_KEY_DELETE;
-            ctx.args[0] = arg_ptr(&ev->key);
+        case EVENT_KEY_DELETE:
+            ASSERT(cp->key_delete != NULL);
             break;
-        }
-        case EVENT_SET_SPECIFIC: {
-            capture_set_specific_event *ev = cp->set_specific;
-            ASSERT(ev != NULL);
-            ctx.cat     = CAT_SET_SPECIFIC;
-            ctx.args[0] = arg_ptr(&ev->key);
-            ctx.args[1] = arg_ptr(ev->value);
+        case EVENT_SET_SPECIFIC:
+            ASSERT(cp->set_specific != NULL);
             break;
-        }
         default:
             logger_fatalf("unexpected ingress event type: %u\n", type);
             break;

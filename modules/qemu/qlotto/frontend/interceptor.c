@@ -16,6 +16,7 @@
 #include <lotto/qlotto/gdb/gdb_server_stub.h>
 #include <lotto/qlotto/gdb/handling/stop_reason.h>
 #include <lotto/qlotto/mapping.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/runtime.h>
 #include <lotto/sys/assert.h>
@@ -83,6 +84,8 @@ _coarse_capture(const context_t *ctx)
 static bool
 _should_drop(const context_t *ctx, bool inc)
 {
+    category_t cat = context_effective_category(ctx);
+
     if (inc) {
         frontend_state.sample_counter = lcg_next(frontend_state.sample_counter);
     }
@@ -90,10 +93,10 @@ _should_drop(const context_t *ctx, bool inc)
     if (_in_fine_region[ctx->id])
         return false;
 
-    if (mapping_cat[ctx->cat].sample == 0)
+    if (mapping_cat[cat].sample == 0)
         return false;
 
-    if (frontend_state.sample_counter % mapping_cat[ctx->cat].sample == 0)
+    if (frontend_state.sample_counter % mapping_cat[cat].sample == 0)
         return false;
 
     return true;
@@ -102,7 +105,7 @@ _should_drop(const context_t *ctx, bool inc)
 static void
 _handler(const context_t *ctx, event_t *e)
 {
-    switch (ctx->cat) {
+    switch (context_effective_category(ctx)) {
         case CAT_REGION_IN:
             _fine_capture(ctx);
             break;

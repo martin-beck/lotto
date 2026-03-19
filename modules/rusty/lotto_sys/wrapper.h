@@ -44,6 +44,8 @@
 #include "lotto/modules/ichpt/state.h"
 #include "lotto/modules/termination/state.h"
 #include "lotto/runtime/events.h"
+#include "lotto/runtime/module_event_category.h"
+#include "lotto/runtime/ingress_events.h"
 #include "lotto/sys/fcntl.h"
 #include "lotto/sys/memory.h"
 #include "lotto/sys/now.h"

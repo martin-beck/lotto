@@ -70,15 +70,6 @@
 typedef enum base_category { FOR_EACH_CATEGORY CAT_END_ } category_t;
 #undef GEN_CAT
 
-#define CAT_BLOCK(x)                                                           \
-    ((x) == CAT_CALL || (x) == CAT_TASK_BLOCK || (x) == CAT_TASK_CREATE)
-
-#define CAT_SLACK(x) ((x) == CAT_CALL || (x) == CAT_TASK_BLOCK)
-
-#define CAT_WAIT(x)                                                            \
-    ((x) == CAT_EVEC_WAIT || (x) == CAT_EVEC_TIMED_WAIT ||                     \
-     (x) == CAT_MUTEX_ACQUIRE || (x) == CAT_POLL || (x) == CAT_JOIN)
-
 /**
  * Returns a string representation of the category `cat`.
  */

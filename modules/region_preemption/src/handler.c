@@ -4,6 +4,7 @@
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/region_preemption/context_payload.h>
 #include <lotto/modules/region_preemption/events.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -127,19 +128,12 @@ _region_preemption_handle(const context_t *ctx, event_t *e)
 
     _region_check(ctx->id);
 
-    switch (ctx->cat) {
-        case CAT_REGION_PREEMPTION:
-            if (context_region_preemption_in(ctx)) {
-                break;
-            }
+    if (context_is_region_preemption_event(ctx)) {
+        if (!context_region_preemption_in(ctx)) {
             _exit_region(ctx->id);
-            break;
-        case CAT_TASK_FINI:
-            _exit_task(ctx->id);
-            break;
-
-        default:
-            break;
+        }
+    } else if (context_is_task_fini(ctx)) {
+        _exit_task(ctx->id);
     }
 
     bool in_region = tidmap_find(&_state, ctx->id) != NULL;
@@ -154,16 +148,10 @@ _region_preemption_handle(const context_t *ctx, event_t *e)
 
     _enter_region();
 
-    switch (ctx->cat) {
-        case CAT_REGION_PREEMPTION:
-            if (context_region_preemption_in(ctx)) {
-                ASSERT(_task == NO_TASK);
-                _task = ctx->id;
-            }
-            break;
-
-        default:
-            break;
+    if (context_is_region_preemption_event(ctx) &&
+        context_region_preemption_in(ctx)) {
+        ASSERT(_task == NO_TASK);
+        _task = ctx->id;
     }
 }
 REGISTER_SEQUENCER_HANDLER(_region_preemption_handle)

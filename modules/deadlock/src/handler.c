@@ -10,6 +10,7 @@
 #include <lotto/modules/mutex/context_payload.h>
 #include <lotto/modules/mutex/events.h>
 #include <lotto/modules/mutex/mutex.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/casts.h>
@@ -244,18 +245,18 @@ _deadlock_handle(const context_t *ctx, event_t *e)
     ASSERT(tid != NO_TASK);
     uintptr_t addr =
         (context_has_capture_point(ctx) &&
-         (ctx->src_type == EVENT_RSRC_ACQUIRING ||
-          ctx->src_type == EVENT_RSRC_RELEASED)) ?
+         (context_has_event_type(ctx, EVENT_RSRC_ACQUIRING) ||
+          context_has_event_type(ctx, EVENT_RSRC_RELEASED))) ?
             (uintptr_t)((rsrc_event_t *)ctx->cp->payload)->addr :
             (uintptr_t)context_mutex_addr(ctx);
-    switch (ctx->cat) {
-        case CAT_MUTEX_ACQUIRE:
-        case CAT_RSRC_ACQUIRING:
+    switch (context_has_capture_point(ctx) ? context_event_type(ctx) : 0) {
+        case EVENT_MUTEX_ACQUIRE:
+        case EVENT_RSRC_ACQUIRING:
             if (_check_deadlock(tid, addr)) {
                 e->reason = REASON_RSRC_DEADLOCK;
             }
             /* fallthru */
-        case CAT_MUTEX_TRYACQUIRE:
+        case EVENT_MUTEX_TRYACQUIRE:
             if (_is_lost(tid, addr)) {
                 e->reason = REASON_RSRC_DEADLOCK;
             }
@@ -263,18 +264,47 @@ _deadlock_handle(const context_t *ctx, event_t *e)
                 _acquiring(tid, addr);
             }
             break;
-        case CAT_MUTEX_RELEASE:
-        case CAT_RSRC_RELEASED:
+        case EVENT_MUTEX_RELEASE:
+        case EVENT_RSRC_RELEASED:
             if (!_released(tid, addr)) {
                 e->reason = REASON_RSRC_DEADLOCK;
             }
             break;
-        case CAT_TASK_FINI:
+        case EVENT_TASK_FINI:
             if (_mark_lost(tid)) {
                 e->reason = REASON_RSRC_DEADLOCK;
             }
             break;
         default:
+            switch (ctx->cat) {
+                case CAT_MUTEX_ACQUIRE:
+                case CAT_RSRC_ACQUIRING:
+                    if (_check_deadlock(tid, addr)) {
+                        e->reason = REASON_RSRC_DEADLOCK;
+                    }
+                    /* fallthru */
+                case CAT_MUTEX_TRYACQUIRE:
+                    if (_is_lost(tid, addr)) {
+                        e->reason = REASON_RSRC_DEADLOCK;
+                    }
+                    if (context_mutex_try_ok(ctx)) {
+                        _acquiring(tid, addr);
+                    }
+                    break;
+                case CAT_MUTEX_RELEASE:
+                case CAT_RSRC_RELEASED:
+                    if (!_released(tid, addr)) {
+                        e->reason = REASON_RSRC_DEADLOCK;
+                    }
+                    break;
+                case CAT_TASK_FINI:
+                    if (_mark_lost(tid)) {
+                        e->reason = REASON_RSRC_DEADLOCK;
+                    }
+                    break;
+                default:
+                    break;
+            }
             break;
     }
     if (e->reason == REASON_RSRC_DEADLOCK) {

@@ -57,7 +57,7 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    ctx          = runtime_ingress_module_context(origin, cp, CAT_TASK_BLOCK);
+    ctx          = runtime_ingress_module_context_auto(origin, cp);
     runtime_ingress(&ctx);
     return PS_OK;
 })
@@ -71,7 +71,7 @@ PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    ctx          = runtime_ingress_module_context(origin, cp, CAT_TASK_BLOCK);
+    ctx          = runtime_ingress_module_context_auto(origin, cp);
     runtime_ingress_after(&ctx);
     return PS_OK;
 })

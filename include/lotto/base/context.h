@@ -58,6 +58,18 @@ context_has_capture_point(const context_t *ctx)
     return ctx != NULL && ctx->cp != NULL;
 }
 
+static inline type_id
+context_event_type(const context_t *ctx)
+{
+    return context_has_type(ctx) ? ctx->type : ctx->src_type;
+}
+
+static inline bool
+context_has_event_type(const context_t *ctx, type_id type)
+{
+    return ctx != NULL && (ctx->type == type || ctx->src_type == type);
+}
+
 /*******************************************************************************
  * Context constructor macros
  ******************************************************************************/

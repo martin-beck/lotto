@@ -10,9 +10,6 @@
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
 
-// defined in Rust code
-category_t await_cat();
-
 typedef struct {
     void *addr;
 } await_event_t;
@@ -45,18 +42,14 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_AWAIT, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
 
     if (cp->src_type != EVENT_AWAIT) {
         return PS_OK;
     }
 
     await_event_t *ev = cp->payload;
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
-    ctx.cat      = await_cat();
-    ctx.args[0]  = arg_ptr(ev->addr);
-    runtime_ingress(&ctx);
+    runtime_ingress_module_submit_event_args(origin, cp, EVENT_AWAIT,
+                                             arg_ptr(ev->addr), (arg_t){0},
+                                             (arg_t){0}, (arg_t){0});
     return PS_OK;
 })

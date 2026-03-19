@@ -8,6 +8,8 @@
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/ichpt/ichpt.h>
 #include <lotto/modules/race/race_result.h>
+#include <lotto/runtime/context_payload.h>
+#include <lotto/runtime/memaccess_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -191,10 +193,10 @@ race_print(race_t race)
 race_t
 race_check(const context_t *ctx, clk_t clk)
 {
-    const category_t cat = ctx->cat;
+    const context_memaccess_event_t cat = context_memaccess_event(ctx);
     race_t race          = {0};
     ot_entry e           = {
-                  .addr    = ctx->args[0].value.ptr,
+                  .addr    = context_memaccess_addr(ctx),
                   .id      = ctx->vid != NO_TASK ? ctx->vid : ctx->id,
                   .virtual = ctx->vid != NO_TASK,
                   .pc      = ctx->pc,
@@ -207,13 +209,13 @@ race_check(const context_t *ctx, clk_t clk)
 
     ot_set *oset = ot_get_or_reg(e.id);
     switch (cat) {
-        case CAT_BEFORE_AREAD:
+        case CONTEXT_MA_BEFORE_AREAD:
             e.atomic = true;
             // fallthru
-        case CAT_BEFORE_READ:
+        case CONTEXT_MA_BEFORE_READ:
             e.readonly = true;
             // fallthru
-        case CAT_BEFORE_WRITE:
+        case CONTEXT_MA_BEFORE_WRITE:
             if (e.addr == 0)
                 return race;
 
@@ -223,10 +225,10 @@ race_check(const context_t *ctx, clk_t clk)
                 return race;
             break;
 
-        case CAT_BEFORE_AWRITE:
-        case CAT_BEFORE_CMPXCHG:
-        case CAT_BEFORE_XCHG:
-        case CAT_BEFORE_RMW:
+        case CONTEXT_MA_BEFORE_AWRITE:
+        case CONTEXT_MA_BEFORE_CMPXCHG:
+        case CONTEXT_MA_BEFORE_XCHG:
+        case CONTEXT_MA_BEFORE_RMW:
             if (e.addr == 0)
                 return race;
 
@@ -237,12 +239,12 @@ race_check(const context_t *ctx, clk_t clk)
                 return race;
             break;
 
-        case CAT_AFTER_CMPXCHG_F:
-        case CAT_AFTER_CMPXCHG_S:
-        case CAT_AFTER_AWRITE:
-        case CAT_AFTER_XCHG:
-        case CAT_AFTER_RMW:
-        case CAT_AFTER_FENCE:
+        case CONTEXT_MA_AFTER_CMPXCHG_F:
+        case CONTEXT_MA_AFTER_CMPXCHG_S:
+        case CONTEXT_MA_AFTER_AWRITE:
+        case CONTEXT_MA_AFTER_XCHG:
+        case CONTEXT_MA_AFTER_RMW:
+        case CONTEXT_MA_AFTER_FENCE:
             ot_clear(oset);
             break;
         default:
@@ -268,14 +270,12 @@ _race_handle(const context_t *ctx, event_t *e)
         return;
 #endif
 
-    switch (ctx->cat) {
-        case CAT_TASK_FINI:
-            ot_lazy_dereg(ctx->vid != NO_TASK ? ctx->vid : ctx->id, e->clk);
-            // fallthru
-        case CAT_TASK_INIT:
-            return;
-        default:
-            break;
+    if (context_is_task_fini(ctx)) {
+        ot_lazy_dereg(ctx->vid != NO_TASK ? ctx->vid : ctx->id, e->clk);
+        return;
+    }
+    if (context_is_task_init(ctx)) {
+        return;
     }
 
     race_t race = race_check(ctx, e->clk);

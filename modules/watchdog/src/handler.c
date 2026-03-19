@@ -2,6 +2,8 @@
 #include "state.h"
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/prng.h>
+#include <lotto/modules/yield/context_payload.h>
+#include <lotto/runtime/memaccess_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -62,17 +64,16 @@ _watchdog_handle(const context_t *ctx, event_t *e)
     if (e->readonly)
         return;
 
-    switch (ctx->cat) {
-        case CAT_AFTER_AREAD:
-        case CAT_AFTER_AWRITE:
-        case CAT_AFTER_XCHG:
-        case CAT_AFTER_CMPXCHG_S:
-        case CAT_AFTER_CMPXCHG_F:
-        case CAT_AFTER_RMW:
-        case CAT_AFTER_FENCE:
-        case CAT_BEFORE_READ:
-        case CAT_BEFORE_WRITE:
-        case CAT_USER_YIELD:
+    switch (context_memaccess_event(ctx)) {
+        case CONTEXT_MA_AFTER_AREAD:
+        case CONTEXT_MA_AFTER_AWRITE:
+        case CONTEXT_MA_AFTER_XCHG:
+        case CONTEXT_MA_AFTER_CMPXCHG_S:
+        case CONTEXT_MA_AFTER_CMPXCHG_F:
+        case CONTEXT_MA_AFTER_RMW:
+        case CONTEXT_MA_AFTER_FENCE:
+        case CONTEXT_MA_BEFORE_READ:
+        case CONTEXT_MA_BEFORE_WRITE:
 
             /* Typically, we do not reschedule when performing non-atomic
              * reads or writes. However, to avoid tasks stuck in spinloops,
@@ -90,6 +91,17 @@ _watchdog_handle(const context_t *ctx, event_t *e)
             break;
 
         default:
+            if (context_yield_event(ctx) != CONTEXT_YIELD_USER) {
+                break;
+            }
+            if (_watchdog_ok(ctx->id))
+                break;
+            tidset_remove(&e->tset, ctx->id);
+            if (!e->is_chpt) {
+                e->reason  = REASON_WATCHDOG;
+                e->is_chpt = true;
+            }
+            e->selector = SELECTOR_RANDOM;
             break;
     }
 }

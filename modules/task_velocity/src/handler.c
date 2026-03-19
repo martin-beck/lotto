@@ -14,6 +14,7 @@
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/task_velocity/context_payload.h>
 #include <lotto/modules/task_velocity/events.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -83,26 +84,19 @@ _task_velocity_handle(const context_t *ctx, event_t *e)
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
     task_t *t = NULL;
-    switch (ctx->cat) {
-        case CAT_TASK_FINI:
-            tidmap_deregister(&_state.map, ctx->id);
-            ASSERT(!tidset_has(&e->tset, ctx->id));
-            break;
-
-        case CAT_TASK_INIT:
-            t = (task_t *)tidmap_find(&_state.map, ctx->id);
-            ASSERT(t == NULL);
-            t = (task_t *)tidmap_register(&_state.map, ctx->id);
-            ASSERT(t);
-            t->probability = LOTTO_TASK_VELOCITY_MAX;
-            break;
-        case CAT_TASK_VELOCITY:
-            t = (task_t *)tidmap_find(&_state.map, ctx->id);
-            ASSERT(t);
-            t->probability = context_task_velocity_probability(ctx);
-            break;
-        default:
-            break;
+    if (context_is_task_fini(ctx)) {
+        tidmap_deregister(&_state.map, ctx->id);
+        ASSERT(!tidset_has(&e->tset, ctx->id));
+    } else if (context_is_task_init(ctx)) {
+        t = (task_t *)tidmap_find(&_state.map, ctx->id);
+        ASSERT(t == NULL);
+        t = (task_t *)tidmap_register(&_state.map, ctx->id);
+        ASSERT(t);
+        t->probability = LOTTO_TASK_VELOCITY_MAX;
+    } else if (context_is_task_velocity_event(ctx)) {
+        t = (task_t *)tidmap_find(&_state.map, ctx->id);
+        ASSERT(t);
+        t->probability = context_task_velocity_probability(ctx);
     }
     if (e->readonly || e->skip) {
         return;

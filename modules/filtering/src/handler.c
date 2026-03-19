@@ -7,6 +7,7 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/stdio.h>
@@ -173,9 +174,10 @@ _filtering_handle(const context_t *ctx, event_t *e)
     ASSERT(ctx->id != NO_TASK);
     ASSERT(e);
 
-    double p = _drop[ctx->cat];
+    category_t cat = context_effective_category(ctx);
+    double p = _drop[cat];
     if (e->filter_less) {
-        p = _drop_less[ctx->cat];
+        p = _drop_less[cat];
     }
 
     if (p == 0)

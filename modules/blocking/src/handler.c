@@ -4,6 +4,7 @@
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/blocking/blocking.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -72,7 +73,7 @@ _blocking_handle(const context_t *ctx, event_t *e)
                           tidset_has(returned_tasks(), ctx->id));
 
     /* When blocking, the current task should not be selectable. */
-    if (ctx->cat == CAT_CALL || ctx->cat == CAT_TASK_BLOCK) {
+    if (context_is_call(ctx) || context_is_task_block(ctx)) {
         ASSERT(!e->is_chpt);
         ASSERT(!tidset_has(&_state.blocked_actual, ctx->id));
 

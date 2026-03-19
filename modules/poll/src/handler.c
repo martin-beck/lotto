@@ -243,8 +243,8 @@ _poll_handle(const context_t *ctx, event_t *e)
         _state.should_cleanup = false;
         _cleanup_fds();
     }
-    switch (ctx->cat) {
-        case CAT_POLL:
+    switch (context_poll_event(ctx)) {
+        case CONTEXT_POLL_WAIT:
             _wait(ctx->id, context_poll_args(ctx));
             break;
         default:

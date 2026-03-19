@@ -17,6 +17,7 @@
 #include <lotto/engine/recorder.h>
 #include <lotto/engine/sequencer.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/now.h>
 #include <lotto/util/contract.h>
@@ -62,13 +63,15 @@ LOTTO_ADVERTISE_TYPE(EVENT_ENGINE__BEFORE_CAPTURE)
  ******************************************************************************/
 
 CONTRACT(static void _check_plan(const context_t *ctx, plan_t p) {
-    if (ctx->cat >= CAT_END_) {
+    context_core_event_t core = context_core_event(ctx);
+    category_t cat = context_effective_category(ctx);
+    if (cat >= CAT_END_) {
         return;
     }
     /* plan.next is only set if ACTION_WAKE is given */
 
     ASSERT(p.next != NO_TASK);
-    ASSERT(!p.with_slack || CAT_SLACK(ctx->cat));
+    ASSERT(!p.with_slack || context_has_slack(ctx));
     unsigned pure_actions =
         p.actions & ACTION_SHUTDOWN && p.actions != ACTION_SHUTDOWN ?
             p.actions & ~ACTION_SHUTDOWN :
@@ -76,31 +79,31 @@ CONTRACT(static void _check_plan(const context_t *ctx, plan_t p) {
     switch (pure_actions) {
         case ACTION_CONTINUE:
         case ACTION_WAKE | ACTION_YIELD | ACTION_RESUME:
-            ASSERT(ctx->cat != CAT_TASK_FINI);
+            ASSERT(core != CONTEXT_CORE_TASK_FINI);
             break;
         case ACTION_CALL | ACTION_YIELD | ACTION_RESUME:
-            ASSERT(ctx->cat == CAT_TASK_CREATE);
+            ASSERT(core == CONTEXT_CORE_TASK_CREATE);
             break;
         case ACTION_WAKE | ACTION_CALL | ACTION_RETURN | ACTION_YIELD |
             ACTION_RESUME:
             ASSERT(p.replay_type != REPLAY_OFF || p.next != ctx->id);
-            ASSERT(ctx->cat == CAT_CALL);
+            ASSERT(core == CONTEXT_CORE_CALL);
             break;
         case ACTION_WAKE | ACTION_BLOCK | ACTION_RETURN | ACTION_YIELD |
             ACTION_RESUME:
             ASSERT(p.replay_type != REPLAY_OFF || p.next != ctx->id);
-            ASSERT(ctx->cat == CAT_TASK_BLOCK);
+            ASSERT(context_is_task_block(ctx));
             break;
         case ACTION_WAKE:
             ASSERT(p.next != ctx->id);
-            ASSERT(ctx->cat == CAT_TASK_FINI);
+            ASSERT(core == CONTEXT_CORE_TASK_FINI);
             break;
         case ACTION_SHUTDOWN:
             break;
         default:
             plan_print(p);
             logger_fatalf("(cat: %s, type:%u, src:%u) plan mismatch\n",
-                          category_str(ctx->cat), ctx->type, ctx->src_type);
+                          category_str(cat), ctx->type, ctx->src_type);
     }
 })
 
@@ -155,7 +158,8 @@ engine_capture(const context_t *ctx)
         ASSERT(caslock_tryacquire(&_ghost.lock));
     })
 
-    log(ctx, "CAPTURE  %s\t%s", category_str(ctx->cat), ctx->func);
+    log(ctx, "CAPTURE  %s\t%s", category_str(context_effective_category(ctx)),
+        ctx->func);
 
     struct value val = any(ctx);
     LOTTO_PUBLISH(EVENT_ENGINE__BEFORE_CAPTURE, val);
@@ -172,7 +176,7 @@ engine_capture(const context_t *ctx)
         }
 
         if ((plan_has(p, ACTION_CALL) || plan_has(p, ACTION_BLOCK)) &&
-            ctx->cat != CAT_TASK_CREATE) {
+            context_core_event(ctx) != CONTEXT_CORE_TASK_CREATE) {
             vatomic_inc(&_ghost.pending_calls);
         }
 
@@ -183,7 +187,8 @@ engine_capture(const context_t *ctx)
     })
 
     if (plan_next(p) == ACTION_CONTINUE)
-        log(ctx, "CONTINUE %s\t%s", category_str(ctx->cat), ctx->func);
+    log(ctx, "CONTINUE %s\t%s", category_str(context_effective_category(ctx)),
+        ctx->func);
 
     return p;
 }
@@ -191,7 +196,8 @@ engine_capture(const context_t *ctx)
 void
 engine_resume(const context_t *ctx)
 {
-    log(ctx, "RESUME   %s\t%s", category_str(ctx->cat), ctx->func);
+    log(ctx, "RESUME   %s\t%s", category_str(context_effective_category(ctx)),
+        ctx->func);
 
     CONTRACT({
         ASSERT(caslock_tryacquire(&_ghost.lock));
@@ -220,6 +226,7 @@ engine_return(const context_t *ctx)
         ASSERT(vatomic_get_dec(&_ghost.pending_calls) > 0);
     })
 
-    log(ctx, "RETURN   %s\t%s", category_str(ctx->cat), ctx->func);
+    log(ctx, "RETURN   %s\t%s", category_str(context_effective_category(ctx)),
+        ctx->func);
     sequencer_return(ctx);
 }

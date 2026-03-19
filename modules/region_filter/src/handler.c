@@ -3,6 +3,7 @@
 #include <lotto/base/tidbag.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
 
@@ -21,7 +22,7 @@ _region_filter_handle(const context_t *ctx, event_t *e)
 
     task_id tid = ctx->vid != NO_TASK ? ctx->vid : ctx->id;
 
-    switch (ctx->cat) {
+    switch (context_effective_category(ctx)) {
         case CAT_REGION_IN:
             if (!tidbag_has(&_in_region, tid)) {
                 logger_infof("enter region %lx\n", tid);

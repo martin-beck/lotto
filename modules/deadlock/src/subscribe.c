@@ -64,10 +64,10 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
 
     switch (cp->src_type) {
         case EVENT_RSRC_ACQUIRING:
-            runtime_ingress_module_submit(origin, cp, CAT_RSRC_ACQUIRING);
+            runtime_ingress_module_submit_auto(origin, cp);
             break;
         case EVENT_RSRC_RELEASED:
-            runtime_ingress_module_submit(origin, cp, CAT_RSRC_RELEASED);
+            runtime_ingress_module_submit_auto(origin, cp);
             break;
         default:
             break;

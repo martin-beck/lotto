@@ -205,14 +205,14 @@ _mutex_handle(const context_t *ctx, event_t *e)
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
     uint64_t addr = context_mutex_addr(ctx);
-    switch (ctx->cat) {
-        case CAT_MUTEX_ACQUIRE:
+    switch (context_mutex_event(ctx)) {
+        case CONTEXT_MUTEX_ACQUIRE:
             _handle_acquire(ctx->id, addr);
             ASSERT(e->any_task_filter == NULL);
             e->any_task_filter = _should_wait;
             // fallthru
-        case CAT_MUTEX_TRYACQUIRE:
-        case CAT_MUTEX_RELEASE:
+        case CONTEXT_MUTEX_TRYACQUIRE:
+        case CONTEXT_MUTEX_RELEASE:
             e->is_chpt = true;
             break;
         default:
@@ -233,14 +233,14 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     ASSERT(ctx);
 
     uint64_t addr = context_mutex_addr(ctx);
-    switch (ctx->cat) {
-        case CAT_MUTEX_ACQUIRE:
+    switch (context_mutex_event(ctx)) {
+        case CONTEXT_MUTEX_ACQUIRE:
             _posthandle_acquire(ctx->id, addr);
             break;
-        case CAT_MUTEX_TRYACQUIRE: {
+        case CONTEXT_MUTEX_TRYACQUIRE: {
             context_mutex_try_set_ret(ctx, _posthandle_tryacquire(ctx->id, addr));
         } break;
-        case CAT_MUTEX_RELEASE:
+        case CONTEXT_MUTEX_RELEASE:
             _posthandle_release(ctx->id, addr);
             break;
         default:

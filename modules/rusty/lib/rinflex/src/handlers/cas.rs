@@ -11,7 +11,7 @@ use std::sync::Mutex;
 
 use crate::memory_access::{MemoryAccess, MemoryOperationExt, Modify, ModifyKind, Read, VAddr};
 use bincode::{Decode, Encode};
-use lotto::base::category::Category;
+use lotto::base::category::{effective_category, Category};
 use lotto::base::{HandlerArg, Value};
 use lotto::brokers::{Marshable, Stateful};
 use lotto::cli::flags::{FlagKey, STR_CONVERTER_BOOL};
@@ -90,16 +90,17 @@ fn ctx_to_memory_access(ctx: &raw::context_t) -> Option<MemoryAccess> {
 
 #[inline]
 fn ctx_to_modify(ctx: &raw::context_t) -> Option<Modify> {
-    if !ctx.cat.is_write() {
+    let cat = effective_category(ctx);
+    if !cat.is_write() {
         return None;
     }
 
     let raw_addr = get_addr(ctx.args[0]);
     let addr = VAddr::get(ctx, raw_addr);
     let size = get_val(ctx.args[1]);
-    let is_after = ctx.cat.is_after();
+    let is_after = cat.is_after();
 
-    let kind: ModifyKind = match ctx.cat {
+    let kind: ModifyKind = match cat {
         // CAS
         Category::CAT_BEFORE_CMPXCHG
         | Category::CAT_AFTER_CMPXCHG_S
@@ -141,10 +142,10 @@ fn ctx_to_modify(ctx: &raw::context_t) -> Option<Modify> {
 
     // NOTE: We need to get the value early for the order enforcer to
     // detect whether the event should be blocked.
-    let read_value = if ctx.cat.is_read() {
+    let read_value = if cat.is_read() {
         // 1. Currently, only consider CAS, XCHG and RMW events.
         // 2. An AFTER event is understood as the same operation as the BEFORE event, so they use the same value.
-        if ctx.cat.is_before() && (ctx.cat.is_xchg() || ctx.cat.is_rmw() || ctx.cat.is_cas()) {
+        if cat.is_before() && (cat.is_xchg() || cat.is_rmw() || cat.is_cas()) {
             let value = unsafe { crate::sized_read(raw_addr as u64, size as usize) };
             Some(value)
         } else {

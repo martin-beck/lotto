@@ -211,7 +211,6 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    context_t ctx = runtime_ingress_module_context(origin, cp, CAT_SYS_YIELD);
-    runtime_ingress(&ctx);
+    runtime_ingress_module_submit_auto(origin, cp);
     return PS_OK;
 })

@@ -1,11 +1,11 @@
 #![allow(clippy::ptr_arg)]
 
-pub use crate::base::TaskId;
+pub use crate::base::{effective_category, TaskId};
 
 use crate::base::Category;
 use crate::base::HandlerArg;
 use crate::collections::FxHashMap;
-use crate::engine::pubsub::CustomCatTable;
+use crate::engine::pubsub::CustomEventTable;
 use as_any::AsAny;
 use lazy_static::lazy_static;
 use log::{trace, warn};
@@ -107,7 +107,7 @@ impl ContextInfo {
         Self {
             event_args: EventArgs::new(ctx),
             pc: ctx.pc,
-            cat: ctx.cat,
+            cat: effective_category(ctx),
         }
     }
 
@@ -320,7 +320,7 @@ pub enum EventArgs {
 
 impl EventArgs {
     pub fn new(ctx: &context) -> Self {
-        match ctx.cat {
+        match effective_category(ctx) {
             Category::CAT_BEFORE_AREAD => {
                 let addr = get_addr_from_context(ctx, /* addr_id */ 0);
                 let size = get_size_from_context(ctx, /* size_id */ 1);
@@ -412,7 +412,7 @@ impl EventArgs {
                 }
             }
             _ => {
-                trace!("Unknown CAT for EventArgs: {:?}", ctx.cat);
+                trace!("Unknown CAT for EventArgs: {:?}", effective_category(ctx));
                 EventArgs::NoChanges
             }
         }
@@ -612,7 +612,7 @@ pub type DynArrivalOrExecuteHandler = dyn ArrivalOrExecuteHandler + Send + Sync;
 pub struct InternalState {
     pub execute_handlers_list: Vec<*mut DynExecuteHandler>,
     pub arrival_or_execute_handlers_list: Vec<*mut DynArrivalOrExecuteHandler>,
-    pub custom_cat_table: CustomCatTable,
+    pub custom_event_table: CustomEventTable,
 }
 
 unsafe impl Send for InternalState {}

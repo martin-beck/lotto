@@ -8,11 +8,26 @@
 #include "events.h"
 #include <lotto/base/context.h>
 #include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_payload.h>
+
+typedef enum context_poll_event {
+    CONTEXT_POLL_NONE = 0,
+    CONTEXT_POLL_WAIT,
+} context_poll_event_t;
+
+static inline context_poll_event_t
+context_poll_event(const context_t *ctx)
+{
+    if (context_has_event_type(ctx, EVENT_POLL)) {
+        return CONTEXT_POLL_WAIT;
+    }
+    return ctx->cat == CAT_POLL ? CONTEXT_POLL_WAIT : CONTEXT_POLL_NONE;
+}
 
 static inline poll_args_t *
 context_poll_args(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx) && ctx->src_type == EVENT_POLL) {
+    if (context_has_event_type(ctx, EVENT_POLL) && context_has_capture_point(ctx)) {
         return ((poll_event_t *)ctx->cp->payload)->args;
     }
     return (poll_args_t *)ctx->args[0].value.ptr;

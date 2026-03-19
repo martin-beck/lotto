@@ -11,6 +11,7 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/state.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
 #include <lotto/util/once.h>
@@ -86,24 +87,18 @@ _pct_handle(const context_t *ctx, event_t *e)
     task_t *t = NULL;
 
     /* initialization */
-    switch (ctx->cat) {
-        case CAT_TASK_FINI:
-            tidmap_deregister(&pct_state()->map, ctx->id);
-            ASSERT(!tidset_has(&e->tset, ctx->id));
-            break;
-
-        case CAT_TASK_INIT:
-            t = (task_t *)tidmap_find(&pct_state()->map, ctx->id);
-            ASSERT(t == NULL);
-            t = (task_t *)tidmap_register(&pct_state()->map, ctx->id);
-            ASSERT(t);
-            t->priority = _pct_priority(prng_next());
-            break;
-
-        default:
-            t = (task_t *)tidmap_find(&pct_state()->map, ctx->id);
-            ASSERT(t);
-            break;
+    if (context_is_task_fini(ctx)) {
+        tidmap_deregister(&pct_state()->map, ctx->id);
+        ASSERT(!tidset_has(&e->tset, ctx->id));
+    } else if (context_is_task_init(ctx)) {
+        t = (task_t *)tidmap_find(&pct_state()->map, ctx->id);
+        ASSERT(t == NULL);
+        t = (task_t *)tidmap_register(&pct_state()->map, ctx->id);
+        ASSERT(t);
+        t->priority = _pct_priority(prng_next());
+    } else {
+        t = (task_t *)tidmap_find(&pct_state()->map, ctx->id);
+        ASSERT(t);
     }
 
     if (!pct_config()->enabled || e->selector != SELECTOR_UNDEFINED ||

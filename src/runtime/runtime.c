@@ -10,6 +10,8 @@
 #include <lotto/base/trace_file.h>
 #include <lotto/engine/engine.h> // for engine_init
 #include <lotto/engine/pubsub.h>
+#include <lotto/runtime/context_payload.h>
+#include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
@@ -178,8 +180,10 @@ _runtime_fini()
     }
 
     context_t ctx = {
-        .id  = 1, /* main task */
-        .cat = CAT_TASK_FINI,
+        .id       = 1, /* main task */
+        .cat      = context_core_category(EVENT_TASK_FINI),
+        .type     = EVENT_TASK_FINI,
+        .src_type = EVENT_TASK_FINI,
     };
     lotto_exit(&ctx, REASON_SUCCESS);
 }

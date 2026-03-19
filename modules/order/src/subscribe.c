@@ -86,8 +86,8 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
     }
 
     order_event_t *ev = cp->payload;
-    (void)runtime_ingress_module_submit_before_args(
-        origin, cp, CAT_CALL, arg(uint64_t, ev->order), (arg_t){0},
+    (void)runtime_ingress_module_submit_before_auto_args(
+        origin, cp, arg(uint64_t, ev->order), (arg_t){0},
         (arg_t){0}, (arg_t){0});
     return PS_OK;
 })
@@ -100,6 +100,6 @@ PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    runtime_ingress_module_submit_after(origin, cp, CAT_CALL);
+    runtime_ingress_module_submit_after_auto(origin, cp);
     return PS_OK;
 })

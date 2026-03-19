@@ -1,18 +1,15 @@
 #include <errno.h>
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "state.h"
+#include <lotto/modules/rwlock/context_payload.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
-#include <lotto/runtime/capture_point.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/ensure.h>
 #include <lotto/sys/logger_block.h>
-#include <lotto/util/casts.h>
 #include <lotto/util/macros.h>
-
-#include <dice/events/pthread.h>
 
 struct reader {
     mapitem_t ti;
@@ -47,69 +44,6 @@ STATIC void _posthandle_wrlock(task_id id, uintptr_t addr);
 STATIC int _posthandle_trywrlock(task_id id, uintptr_t addr);
 STATIC void _posthandle_unlock(task_id id, uintptr_t addr);
 STATIC bool _should_wait(task_id id);
-STATIC uint64_t _rwlock_addr(const context_t *ctx);
-STATIC void _rwlock_try_set_ret(const context_t *ctx, int ret);
-
-STATIC uint64_t
-_rwlock_addr(const context_t *ctx)
-{
-    if (context_has_capture_point(ctx)) {
-        switch (ctx->src_type) {
-            case EVENT_RWLOCK_RDLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_rdlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_WRLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_wrlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_UNLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_unlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TRYRDLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_tryrdlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TRYWRLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_trywrlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TIMEDRDLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_timedrdlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TIMEDWRLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_timedwrlock_event *)ctx->cp->payload)
-                        ->lock;
-            default:
-                break;
-        }
-    }
-    return CAST_TYPE(uint64_t, ctx->args[0].value.ptr);
-}
-
-STATIC void
-_rwlock_try_set_ret(const context_t *ctx, int ret)
-{
-    if (context_has_capture_point(ctx)) {
-        switch (ctx->src_type) {
-            case EVENT_RWLOCK_TRYRDLOCK:
-                ((struct pthread_rwlock_tryrdlock_event *)ctx->cp->payload)->ret =
-                    ret;
-                return;
-            case EVENT_RWLOCK_TRYWRLOCK:
-                ((struct pthread_rwlock_trywrlock_event *)ctx->cp->payload)->ret =
-                    ret;
-                return;
-            default:
-                break;
-        }
-    }
-    arg_t *out      = (arg_t *)&ctx->args[1];
-    out->value.u32 = (uint32_t)ret;
-}
 
 STATIC void
 _rwlock_handle(const context_t *ctx, event_t *e)
@@ -120,25 +54,25 @@ _rwlock_handle(const context_t *ctx, event_t *e)
 
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
-    uint64_t addr = _rwlock_addr(ctx);
-    switch (ctx->cat) {
-        case CAT_RWLOCK_RDLOCK:
+    uint64_t addr = context_rwlock_addr(ctx);
+    switch (context_rwlock_event(ctx)) {
+        case CONTEXT_RWLOCK_RDLOCK:
             _handle_rdlock(ctx->id, addr, e);
             e->is_chpt = true;
             ASSERT(!e->any_task_filter);
             e->any_task_filter = _should_wait;
             break;
 
-        case CAT_RWLOCK_WRLOCK:
+        case CONTEXT_RWLOCK_WRLOCK:
             _handle_wrlock(ctx->id, addr, e);
             e->is_chpt = true;
             ASSERT(!e->any_task_filter);
             e->any_task_filter = _should_wait;
             break;
 
-        case CAT_RWLOCK_TRYRDLOCK:
-        case CAT_RWLOCK_TRYWRLOCK:
-        case CAT_RWLOCK_UNLOCK:
+        case CONTEXT_RWLOCK_TRYRDLOCK:
+        case CONTEXT_RWLOCK_TRYWRLOCK:
+        case CONTEXT_RWLOCK_UNLOCK:
             e->is_chpt = true;
             break;
 
@@ -164,22 +98,22 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 
-    uint64_t addr = _rwlock_addr(ctx);
-    switch (ctx->cat) {
-        case CAT_RWLOCK_RDLOCK:
+    uint64_t addr = context_rwlock_addr(ctx);
+    switch (context_rwlock_event(ctx)) {
+        case CONTEXT_RWLOCK_RDLOCK:
             _posthandle_rdlock(ctx->id, addr);
             break;
-        case CAT_RWLOCK_WRLOCK:
+        case CONTEXT_RWLOCK_WRLOCK:
             _posthandle_wrlock(ctx->id, addr);
             break;
-        case CAT_RWLOCK_UNLOCK:
+        case CONTEXT_RWLOCK_UNLOCK:
             _posthandle_unlock(ctx->id, addr);
             break;
-        case CAT_RWLOCK_TRYRDLOCK:
-            _rwlock_try_set_ret(ctx, _posthandle_tryrdlock(ctx->id, addr));
+        case CONTEXT_RWLOCK_TRYRDLOCK:
+            context_rwlock_try_set_ret(ctx, _posthandle_tryrdlock(ctx->id, addr));
             break;
-        case CAT_RWLOCK_TRYWRLOCK:
-            _rwlock_try_set_ret(ctx, _posthandle_trywrlock(ctx->id, addr));
+        case CONTEXT_RWLOCK_TRYWRLOCK:
+            context_rwlock_try_set_ret(ctx, _posthandle_trywrlock(ctx->id, addr));
             break;
         default:
             break;

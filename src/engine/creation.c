@@ -4,6 +4,7 @@
 #include <lotto/base/tidset.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/ensure.h>
 #include <lotto/sys/logger_block.h>
@@ -59,15 +60,14 @@ handle_creation(const context_t *ctx, event_t *e)
     ASSERT(!e->is_chpt);
     ASSERT(tidset_size(&e->tset) == 0);
 
-    switch (ctx->cat) {
-        case CAT_TASK_CREATE:
+    switch (context_core_event(ctx)) {
+        case CONTEXT_CORE_TASK_CREATE:
             _state.last_parent = ctx->id;
             e->next            = ANY_TASK;
             e->is_chpt         = true;
             e->readonly        = true;
             break;
-
-        case CAT_TASK_INIT:
+        case CONTEXT_CORE_TASK_INIT:
             logger_debugf("Register tid %lu (parent: %lu)\n", ctx->id,
                           _state.last_parent);
             ENSURE(tidset_insert(&_state.registered, ctx->id) &&
@@ -75,17 +75,15 @@ handle_creation(const context_t *ctx, event_t *e)
             e->reason  = REASON_DETERMINISTIC;
             e->is_chpt = true;
             break;
-
-        case CAT_TASK_FINI:
+        case CONTEXT_CORE_TASK_FINI:
             ENSURE(tidset_remove(&_state.registered, ctx->id) &&
                    "an unregistered task deregistered");
             e->is_chpt = true;
             break;
-
         default:
-            if (!tidset_insert(&_state.registered, ctx->id))
-                break;
-            logger_debugf("Registering task %lu\n", ctx->id);
+            if (tidset_insert(&_state.registered, ctx->id)) {
+                logger_debugf("Registering task %lu\n", ctx->id);
+            }
             break;
     }
 

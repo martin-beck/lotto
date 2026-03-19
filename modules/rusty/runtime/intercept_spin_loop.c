@@ -11,10 +11,6 @@
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
 
-// defined in Rust code
-category_t spin_start_cat();
-category_t spin_end_cat();
-
 typedef struct {
     uint32_t cond;
 } spin_end_event_t;
@@ -68,24 +64,16 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_SPIN_END, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
 
     switch (cp->src_type) {
         case EVENT_SPIN_START:
-            ctx          = *origin;
-            ctx.type     = EVENT_MODULE_INTERCEPT;
-            ctx.src_type = cp->src_type;
-            ctx.cat      = spin_start_cat();
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit_event(origin, cp, EVENT_SPIN_START);
             break;
         case EVENT_SPIN_END: {
             spin_end_event_t *ev = cp->payload;
-            ctx          = *origin;
-            ctx.type     = EVENT_MODULE_INTERCEPT;
-            ctx.src_type = cp->src_type;
-            ctx.cat      = spin_end_cat();
-            ctx.args[0]  = arg(uint32_t, ev->cond);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit_event_args(
+                origin, cp, EVENT_SPIN_END, arg(uint32_t, ev->cond),
+                (arg_t){0}, (arg_t){0}, (arg_t){0});
             break;
         }
         default:

@@ -10,6 +10,8 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/state.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
+#include <lotto/runtime/memaccess_payload.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
 #include <lotto/util/once.h>
@@ -127,37 +129,36 @@ _pos_handle(const context_t *ctx, event_t *e)
     bool is_write  = false;
     task_t *t      = NULL;
 
-    switch (ctx->cat) {
-        case CAT_TASK_FINI:
-            tidmap_deregister(&_state, ctx->id);
-            ASSERT(!tidset_has(&e->tset, ctx->id));
-            break;
+    if (context_is_task_fini(ctx)) {
+        tidmap_deregister(&_state, ctx->id);
+        ASSERT(!tidset_has(&e->tset, ctx->id));
+    } else if (context_is_task_init(ctx)) {
+        t = (task_t *)tidmap_find(&_state, ctx->id);
+        ASSERT(t == NULL);
+        t = (task_t *)tidmap_register(&_state, ctx->id);
+        ASSERT(t);
+        t->is_write = false;
+        t->addr     = 0;
+        t->priority = _fresh_priority(prng_next());
+    } else {
+        switch (context_memaccess_event(ctx)) {
+            case CONTEXT_MA_BEFORE_WRITE:
+            case CONTEXT_MA_BEFORE_AWRITE:
+            case CONTEXT_MA_BEFORE_CMPXCHG:
+            case CONTEXT_MA_BEFORE_XCHG:
+            case CONTEXT_MA_BEFORE_RMW:
+                is_write = true;
+                addr     = context_memaccess_addr(ctx);
+                break;
 
-        case CAT_TASK_INIT:
-            t = (task_t *)tidmap_find(&_state, ctx->id);
-            ASSERT(t == NULL);
-            t = (task_t *)tidmap_register(&_state, ctx->id);
-            ASSERT(t);
-            t->is_write = false;
-            t->addr     = 0;
-            t->priority = _fresh_priority(prng_next());
-            break;
+            case CONTEXT_MA_BEFORE_AREAD:
+            case CONTEXT_MA_BEFORE_READ:
+                addr = context_memaccess_addr(ctx);
+                break;
 
-        case CAT_BEFORE_WRITE:
-        case CAT_BEFORE_AWRITE:
-        case CAT_BEFORE_CMPXCHG:
-        case CAT_BEFORE_XCHG:
-        case CAT_BEFORE_RMW:
-            is_write = true;
-            addr     = ctx->args[0].value.ptr;
-            break;
-
-        case CAT_BEFORE_AREAD:
-        case CAT_BEFORE_READ:
-            addr = ctx->args[0].value.ptr;
-
-        default:
-            break;
+            default:
+                break;
+        }
     }
 
     if (!pos_config()->enabled || !e->is_chpt ||
@@ -175,7 +176,7 @@ _pos_handle(const context_t *ctx, event_t *e)
             t->priority = _fresh_priority(prng_next());
         }
     } else {
-        ASSERT(ctx->cat == CAT_TASK_FINI);
+        ASSERT(context_is_task_fini(ctx));
     }
     _pos_sort(&e->tset);
     _reset_races(tidset_get(&e->tset, 0));

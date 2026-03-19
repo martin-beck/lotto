@@ -1,6 +1,6 @@
 use crate::{Either, StackFrameId, StackTrace};
 use lotto::collections::FxHashMap;
-use lotto::{base::HandlerArg, base::StableAddress, raw, Stateful};
+use lotto::{base::category::effective_category, base::HandlerArg, base::StableAddress, raw, Stateful};
 use lotto::{
     base::Value,
     brokers::statemgr::*,
@@ -38,7 +38,7 @@ impl handler::Handler for StackTraceHandler {
             return;
         }
         let id = TaskId(ctx.id);
-        match ctx.cat {
+        match effective_category(ctx) {
             raw::base_category::CAT_FUNC_ENTRY => {
                 let caller_pc = get_arg_ptr(&ctx.args[0]) - call_insn_len();
                 let (sname, fname) = self.get_pc_info(caller_pc as *const c_void);

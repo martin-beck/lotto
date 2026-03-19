@@ -14,6 +14,7 @@
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/recorder.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/stdio.h>
@@ -212,7 +213,7 @@ recorder_record(const context_t *ctx, clk_t clk)
     ASSERT(r != NULL);
     r->kind = RECORD_SCHED;
     r->id   = ctx->id;
-    r->cat  = ctx->cat;
+    r->cat  = context_effective_category(ctx);
     r->type = ctx->type;
     r->src_type = ctx->src_type;
     r->pc   = ctx->pc;

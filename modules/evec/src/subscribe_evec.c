@@ -6,6 +6,7 @@
 #include <lotto/engine/pubsub.h>
 #include <lotto/evec.h>
 #include <lotto/modules/evec/events.h>
+#include <lotto/modules/yield/events.h>
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
@@ -178,28 +179,28 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     capture_point *cp       = (capture_point *)event;
     switch (cp->src_type) {
         case EVENT_EVEC_PREPARE:
-            runtime_ingress_module_submit(origin, cp, CAT_SYS_YIELD);
-            runtime_ingress_module_submit(origin, cp, CAT_EVEC_PREPARE);
+            runtime_ingress_module_submit_extra_event(origin, cp,
+                                                      EVENT_SYS_YIELD);
             break;
         case EVENT_EVEC_WAIT:
-            runtime_ingress_module_submit(origin, cp, CAT_SYS_YIELD);
-            runtime_ingress_module_submit(origin, cp, CAT_EVEC_WAIT);
+            runtime_ingress_module_submit_extra_event(origin, cp,
+                                                      EVENT_SYS_YIELD);
             break;
         case EVENT_EVEC_TIMED_WAIT:
-            runtime_ingress_module_submit(origin, cp, CAT_SYS_YIELD);
-            runtime_ingress_module_submit(origin, cp, CAT_EVEC_TIMED_WAIT);
+            runtime_ingress_module_submit_extra_event(origin, cp,
+                                                      EVENT_SYS_YIELD);
             break;
         case EVENT_EVEC_CANCEL:
-            runtime_ingress_module_submit(origin, cp, CAT_SYS_YIELD);
-            runtime_ingress_module_submit(origin, cp, CAT_EVEC_CANCEL);
+            runtime_ingress_module_submit_extra_event(origin, cp,
+                                                      EVENT_SYS_YIELD);
             break;
         case EVENT_EVEC_WAKE:
-            runtime_ingress_module_submit(origin, cp, CAT_SYS_YIELD);
-            runtime_ingress_module_submit(origin, cp, CAT_EVEC_WAKE);
+            runtime_ingress_module_submit_extra_event(origin, cp,
+                                                      EVENT_SYS_YIELD);
             break;
         case EVENT_EVEC_MOVE:
-            runtime_ingress_module_submit(origin, cp, CAT_SYS_YIELD);
-            runtime_ingress_module_submit(origin, cp, CAT_EVEC_MOVE);
+            runtime_ingress_module_submit_extra_event(origin, cp,
+                                                      EVENT_SYS_YIELD);
             break;
         default:
             break;

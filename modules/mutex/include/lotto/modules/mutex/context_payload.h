@@ -10,12 +10,45 @@
 #include <lotto/base/context.h>
 #include <lotto/modules/mutex/events.h>
 #include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_payload.h>
+
+typedef enum context_mutex_event {
+    CONTEXT_MUTEX_NONE = 0,
+    CONTEXT_MUTEX_ACQUIRE,
+    CONTEXT_MUTEX_TRYACQUIRE,
+    CONTEXT_MUTEX_RELEASE,
+} context_mutex_event_t;
+
+static inline context_mutex_event_t
+context_mutex_event(const context_t *ctx)
+{
+    switch (context_event_type(ctx)) {
+        case EVENT_MUTEX_ACQUIRE:
+            return CONTEXT_MUTEX_ACQUIRE;
+        case EVENT_MUTEX_TRYACQUIRE:
+            return CONTEXT_MUTEX_TRYACQUIRE;
+        case EVENT_MUTEX_RELEASE:
+            return CONTEXT_MUTEX_RELEASE;
+        default:
+            break;
+    }
+    switch (ctx->cat) {
+        case CAT_MUTEX_ACQUIRE:
+            return CONTEXT_MUTEX_ACQUIRE;
+        case CAT_MUTEX_TRYACQUIRE:
+            return CONTEXT_MUTEX_TRYACQUIRE;
+        case CAT_MUTEX_RELEASE:
+            return CONTEXT_MUTEX_RELEASE;
+        default:
+            return CONTEXT_MUTEX_NONE;
+    }
+}
 
 static inline uint64_t
 context_mutex_addr(const context_t *ctx)
 {
     if (context_has_capture_point(ctx)) {
-        switch (ctx->src_type) {
+        switch (context_event_type(ctx)) {
             case EVENT_MUTEX_ACQUIRE:
                 return (uint64_t)(uintptr_t)
                     ((mutex_acquire_event_t *)ctx->cp->payload)->addr;
@@ -35,7 +68,8 @@ context_mutex_addr(const context_t *ctx)
 static inline bool
 context_mutex_try_ok(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx) && ctx->src_type == EVENT_MUTEX_TRYACQUIRE) {
+    if (context_has_event_type(ctx, EVENT_MUTEX_TRYACQUIRE) &&
+        context_has_capture_point(ctx)) {
         return ((mutex_tryacquire_event_t *)ctx->cp->payload)->ret == 0;
     }
     return ctx->args[1].value.u8 == 0;
@@ -44,7 +78,8 @@ context_mutex_try_ok(const context_t *ctx)
 static inline void
 context_mutex_try_set_ret(const context_t *ctx, int ret)
 {
-    if (context_has_capture_point(ctx) && ctx->src_type == EVENT_MUTEX_TRYACQUIRE) {
+    if (context_has_event_type(ctx, EVENT_MUTEX_TRYACQUIRE) &&
+        context_has_capture_point(ctx)) {
         ((mutex_tryacquire_event_t *)ctx->cp->payload)->ret = ret;
         return;
     }

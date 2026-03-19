@@ -29,7 +29,7 @@ typedef void (*handle_f)(const context_t *ctx, event_t *e);
 task_id dispatch_event(const context_t *ctx, event_t *e);
 
 #define REGISTER_HANDLER(handle)                                               \
-    PS_SUBSCRIBE(CHAIN_LOTTO_DEFAULT, EVENT_ENGINE__CAPTURE, {                 \
+    PS_SUBSCRIBE(CHAIN_SEQUENCER_CAPTURE, EVENT_SEQUENCER_CAPTURE, {           \
         const context_t *ctx = (const context_t *)md;                          \
         event_t *e           = (event_t *)event;                               \
         handle(ctx, e);                                                        \
@@ -38,7 +38,7 @@ task_id dispatch_event(const context_t *ctx, event_t *e);
     })
 
 #define REGISTER_HANDLER_EXTERNAL(handle)                                      \
-    PS_SUBSCRIBE(CHAIN_LOTTO_DEFAULT, EVENT_ENGINE__CAPTURE, {                 \
+    PS_SUBSCRIBE(CHAIN_SEQUENCER_CAPTURE, EVENT_SEQUENCER_CAPTURE, {           \
         const context_t *ctx = (const context_t *)md;                          \
         event_t *e           = (event_t *)event;                               \
         if (lotto_loaded())                                                    \

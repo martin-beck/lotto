@@ -110,23 +110,23 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
     capture_point *cp       = (capture_point *)event;
     switch (cp->src_type) {
         case EVENT_RWLOCK_RDLOCK: {
-            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_RDLOCK);
+            runtime_ingress_module_submit_auto(origin, cp);
             return PS_OK;
         }
         case EVENT_RWLOCK_WRLOCK: {
-            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_WRLOCK);
+            runtime_ingress_module_submit_auto(origin, cp);
             return PS_OK;
         }
         case EVENT_RWLOCK_UNLOCK: {
-            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_UNLOCK);
+            runtime_ingress_module_submit_auto(origin, cp);
             return PS_OK;
         }
         case EVENT_RWLOCK_TIMEDRDLOCK: {
-            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_RDLOCK);
+            runtime_ingress_module_submit_auto(origin, cp);
             return PS_OK;
         }
         case EVENT_RWLOCK_TIMEDWRLOCK: {
-            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_WRLOCK);
+            runtime_ingress_module_submit_auto(origin, cp);
             return PS_OK;
         }
         default:
@@ -139,10 +139,10 @@ PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
     capture_point *cp       = (capture_point *)event;
     switch (cp->src_type) {
         case EVENT_RWLOCK_TRYRDLOCK:
-            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_TRYRDLOCK);
+            runtime_ingress_module_submit_auto(origin, cp);
             return PS_OK;
         case EVENT_RWLOCK_TRYWRLOCK:
-            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_TRYWRLOCK);
+            runtime_ingress_module_submit_auto(origin, cp);
             return PS_OK;
         default:
             return PS_OK;

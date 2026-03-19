@@ -70,7 +70,7 @@ static void
 _handle(reason_t user_reason, reason_t runtime_reason)
 {
     // mediator_disable_registration();
-    context_t ctx   = {.cat = CAT_NONE};
+    context_t ctx   = {0};
     reason_t reason = user_reason;
 
     mediator_t *m = mediator_get_data(false);
@@ -167,10 +167,7 @@ __assert_fail(const char *assertion, const char *file, line_int line,
 
     _backtrace_print();
 
-    context_t ctx = {
-        .id  = tid,
-        .cat = CAT_NONE,
-    };
+    context_t ctx = {.id = tid};
     lotto_exit(&ctx, REASON_ASSERT_FAIL);
 }
 
