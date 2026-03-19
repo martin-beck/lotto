@@ -37,4 +37,4 @@ _yield_handle(const context_t *ctx, event_t *e)
             break;
     }
 }
-REGISTER_HANDLER(_yield_handle)
+REGISTER_SEQUENCER_HANDLER(_yield_handle)

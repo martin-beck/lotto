@@ -47,7 +47,7 @@ void *intercept_lookup_call(const char *func);
 mediator_t *runtime_ingress_before(context_t *ctx);
 
 /* called after executing an intercepted external function. */
-void runtime_ingress_after(const char *func);
+void runtime_ingress_after(context_t *ctx);
 
 /// true if lotto interceptors have been initialized
 bool lotto_intercept_initialized(void);

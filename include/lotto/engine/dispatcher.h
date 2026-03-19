@@ -47,4 +47,13 @@ task_id dispatch_event(const context_t *ctx, event_t *e);
             return PS_STOP_CHAIN;                                              \
     })
 
+#define REGISTER_SEQUENCER_HANDLER(handle)                                     \
+    PS_SUBSCRIBE(CHAIN_SEQUENCER_CAPTURE, EVENT_SEQUENCER_CAPTURE, {           \
+        const context_t *ctx = (const context_t *)md;                          \
+        event_t *e           = (event_t *)event;                               \
+        handle(ctx, e);                                                        \
+        if (e->skip)                                                           \
+            return PS_STOP_CHAIN;                                              \
+    })
+
 #endif

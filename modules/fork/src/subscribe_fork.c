@@ -78,20 +78,27 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    ctx     = *origin;
-    ctx.cat = CAT_CALL;
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_CALL;
     (void)runtime_ingress_before(&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
-    capture_point *cp = (capture_point *)event;
+    const context_t *origin = (const context_t *)md;
+    capture_point *cp       = (capture_point *)event;
+    context_t ctx;
 
     if (cp->src_type != EVENT_FORK_EXECVE) {
         return PS_OK;
     }
 
-    fork_event_t *ev = cp->payload;
-    runtime_ingress_after(ev->func);
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_CALL;
+    runtime_ingress_after(&ctx);
     return PS_OK;
 })

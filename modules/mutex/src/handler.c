@@ -225,9 +225,9 @@ _mutex_handle(const context_t *ctx, event_t *e)
         e->reason = REASON_RSRC_DEADLOCK;
     }
 }
-REGISTER_HANDLER(_mutex_handle)
+REGISTER_SEQUENCER_HANDLER(_mutex_handle)
 
-LOTTO_SUBSCRIBE(EVENT_ENGINE__NEXT_TASK, {
+LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     const context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 

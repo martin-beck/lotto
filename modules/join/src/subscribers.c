@@ -78,11 +78,13 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     }
 
     join_event_t *ev = cp->payload;
-    ctx         = *origin;
-    ctx.cat     = CAT_JOIN;
-    ctx.args[0] = arg(uint64_t, ev->thread);
-    ctx.args[1] = arg_ptr(ev->ptr);
-    ctx.args[2] = arg_ptr(ev->ret);
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_JOIN;
+    ctx.args[0]  = arg(uint64_t, ev->thread);
+    ctx.args[1]  = arg_ptr(ev->ptr);
+    ctx.args[2]  = arg_ptr(ev->ret);
     runtime_ingress(&ctx);
     return PS_OK;
 })

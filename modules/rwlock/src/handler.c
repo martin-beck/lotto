@@ -92,9 +92,9 @@ _rwlock_handle(const context_t *ctx, event_t *e)
         }
     }
 }
-REGISTER_HANDLER(_rwlock_handle)
+REGISTER_SEQUENCER_HANDLER(_rwlock_handle)
 
-LOTTO_SUBSCRIBE(EVENT_ENGINE__NEXT_TASK, {
+LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 

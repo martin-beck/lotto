@@ -159,20 +159,16 @@ runtime_ingress_before(context_t *ctx)
 }
 
 void
-runtime_ingress_after(const char *func)
+runtime_ingress_after(context_t *ctx)
 {
     if (!lotto_intercept_initialized()) {
         logger_debugf("[?] after call '%s' (interceptor not initialized yet)\n",
-                      func);
+                      ctx->func);
         return;
     }
     mediator_t *m = get_mediator(false);
 
-    logger_debugf("[%lu] after call  '%s'\n", m->id, func);
-    /* after the external call is done, call "return". Adapt the
-     * category in case we created a new task. */
-    category_t cat = _is_task_create(func, true) ? CAT_TASK_CREATE : CAT_CALL;
-    context_t *ctx = ctx(.func = func, .cat = cat);
+    logger_debugf("[%lu] after call  '%s'\n", m->id, ctx->func);
     _intercept_return_resume(m, ctx);
 }
 

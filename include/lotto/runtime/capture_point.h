@@ -34,10 +34,10 @@ typedef struct capture_task_create_event {
     void *run;
 } capture_task_create_event;
 
-typedef struct capture_detach_event {
+typedef struct capture_task_detach_event {
     uintptr_t thread;
     int *ret;
-} capture_detach_event;
+} capture_task_detach_event;
 
 typedef struct capture_key_create_event {
     pthread_key_t *key;
@@ -62,7 +62,7 @@ typedef struct capture_point {
         capture_task_init_event *task_init;
         capture_task_fini_event *task_fini;
         capture_task_create_event *task_create;
-        capture_detach_event *detach;
+        capture_task_detach_event *task_detach;
         capture_key_create_event *key_create;
         capture_key_delete_event *key_delete;
         capture_set_specific_event *set_specific;

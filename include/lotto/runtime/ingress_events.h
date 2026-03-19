@@ -9,7 +9,7 @@
 #define EVENT_TASK_FINI     171
 #define EVENT_TASK_CREATE   172
 #define EVENT_CALL          173
-#define EVENT_DETACH        174
+#define EVENT_TASK_DETACH   174
 #define EVENT_KEY_CREATE    165
 #define EVENT_KEY_DELETE    166
 #define EVENT_SET_SPECIFIC  167

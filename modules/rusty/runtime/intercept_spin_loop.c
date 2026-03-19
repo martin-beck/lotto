@@ -72,15 +72,19 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
 
     switch (cp->src_type) {
         case EVENT_SPIN_START:
-            ctx     = *origin;
-            ctx.cat = spin_start_cat();
+            ctx          = *origin;
+            ctx.type     = EVENT_MODULE_INTERCEPT;
+            ctx.src_type = cp->src_type;
+            ctx.cat      = spin_start_cat();
             runtime_ingress(&ctx);
             break;
         case EVENT_SPIN_END: {
             spin_end_event_t *ev = cp->payload;
-            ctx         = *origin;
-            ctx.cat     = spin_end_cat();
-            ctx.args[0] = arg(uint32_t, ev->cond);
+            ctx          = *origin;
+            ctx.type     = EVENT_MODULE_INTERCEPT;
+            ctx.src_type = cp->src_type;
+            ctx.cat      = spin_end_cat();
+            ctx.args[0]  = arg(uint32_t, ev->cond);
             runtime_ingress(&ctx);
             break;
         }

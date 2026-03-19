@@ -22,6 +22,14 @@ The intended event flow is:
    `runtime_ingress()`, `runtime_ingress_before()`, and
    `runtime_ingress_after()` APIs.
 
+5. Sequencer / handler boundary
+   The engine now also publishes explicit sequencer chains:
+   - `CHAIN_SEQUENCER_CAPTURE`
+   - `CHAIN_SEQUENCER_RESUME`
+
+   Handler modules are being moved from the legacy default Lotto chain onto
+   these sequencer chains.
+
 This means `runtime_ingress*` is now a compatibility layer, not the desired
 public boundary.
 
@@ -124,6 +132,29 @@ The runtime bridge currently handles core ingress events such as:
 - key delete
 - set specific
 
+### Sequencer-side handler subscriptions
+
+The handler boundary is now moving from the legacy pair:
+
+- `CHAIN_LOTTO_DEFAULT / EVENT_ENGINE__CAPTURE`
+- `EVENT_ENGINE__NEXT_TASK`
+
+to the explicit pair:
+
+- `CHAIN_SEQUENCER_CAPTURE / EVENT_SEQUENCER_CAPTURE`
+- `CHAIN_SEQUENCER_RESUME / EVENT_SEQUENCER_RESUME`
+
+The current engine still publishes both old and new paths in parallel so
+module migrations can be staged safely.
+
+Most runtime handler modules now subscribe through:
+
+- `REGISTER_SEQUENCER_HANDLER(...)`
+- `LOTTO_SUBSCRIBE_SEQUENCER_RESUME(...)`
+
+This means the new sequencer chains are already the primary consumer-facing
+handler boundary even though the legacy publications still exist underneath.
+
 ## Important Current Boundary
 
 The intended public/non-legacy boundary is:
@@ -168,9 +199,11 @@ Status:
 ### Mid-term
 
 1. Reduce direct dependence on `context_t.cat`
-2. Move handler/sequencer boundaries away from the current implicit
+2. Remove the legacy dual-publication on the old handler chains once the
+   remaining consumers and tests no longer depend on it
+3. Move handler/sequencer boundaries away from the current implicit
    `context_t` + `event_t` pairing
-3. Introduce explicit sequencer-facing messages instead of smuggling context via
+4. Introduce explicit sequencer-facing messages instead of smuggling context via
    Dice metadata
 
 ### Later

@@ -110,7 +110,9 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
     capture_point *cp       = (capture_point *)event;
     context_t ctx;
 
-    ctx = *origin;
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
     switch (cp->src_type) {
         case EVENT_RWLOCK_RDLOCK: {
             struct pthread_rwlock_rdlock_event *ev = cp->payload;
@@ -159,7 +161,9 @@ PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
     capture_point *cp       = (capture_point *)event;
     context_t ctx;
 
-    ctx = *origin;
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
     switch (cp->src_type) {
         case EVENT_RWLOCK_TRYRDLOCK: {
             struct pthread_rwlock_tryrdlock_event *ev = cp->payload;

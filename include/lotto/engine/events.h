@@ -25,5 +25,7 @@
 #define EVENT_ENGINE__DELAYED_PATH               121
 #define EVENT_ENGINE__NEXT_TASK                  122
 #define EVENT_ENGINE__CAPTURE                    123
+#define EVENT_SEQUENCER_CAPTURE                  124
+#define EVENT_SEQUENCER_RESUME                   125
 
 #endif

@@ -18,6 +18,8 @@
 #define CHAIN_INGRESS       9
 #define CHAIN_INGRESS_BEFORE 10
 #define CHAIN_INGRESS_AFTER 11
+#define CHAIN_SEQUENCER_CAPTURE 12
+#define CHAIN_SEQUENCER_RESUME  13
 
 /* Advertise a Lotto event type name for debugging and tracing output. */
 #define LOTTO_ADVERTISE_TYPE(TYPE)                                             \
@@ -50,6 +52,16 @@
 /* Subscribe on the Lotto control chain. */
 #define LOTTO_SUBSCRIBE_CONTROL(TYPE, ...)                                     \
     LOTTO_SUBSCRIBE_WITH_K_(CHAIN_LOTTO_CONTROL, TYPE, __COUNTER__,            \
+                            LOTTO_BODY({__VA_ARGS__}))
+
+/* Subscribe on the sequencer capture chain. */
+#define LOTTO_SUBSCRIBE_SEQUENCER_CAPTURE(TYPE, ...)                           \
+    LOTTO_SUBSCRIBE_WITH_K_(CHAIN_SEQUENCER_CAPTURE, TYPE, __COUNTER__,        \
+                            LOTTO_BODY({__VA_ARGS__}))
+
+/* Subscribe on the sequencer resume chain. */
+#define LOTTO_SUBSCRIBE_SEQUENCER_RESUME(TYPE, ...)                            \
+    LOTTO_SUBSCRIBE_WITH_K_(CHAIN_SEQUENCER_RESUME, TYPE, __COUNTER__,         \
                             LOTTO_BODY({__VA_ARGS__}))
 
 /*

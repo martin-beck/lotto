@@ -196,6 +196,8 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
     context_t ctx           = *origin;
+    ctx.type                = EVENT_MODULE_INTERCEPT;
+    ctx.src_type            = cp->src_type;
 
     switch (cp->src_type) {
         case EVENT_MUTEX_ACQUIRE: {

@@ -278,25 +278,28 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_STACKTRACE_EXIT, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
+    context_t ctx           = *origin;
+    ctx.type                = EVENT_MODULE_INTERCEPT;
+    ctx.src_type            = cp->src_type;
 
     switch (cp->src_type) {
         case EVENT_MA_READ: {
             struct ma_read_event *ev = cp->payload;
-            ingress_addr_size(origin, CAT_BEFORE_READ, ev->addr, ev->size);
+            ingress_addr_size(&ctx, CAT_BEFORE_READ, ev->addr, ev->size);
             return PS_OK;
         }
         case EVENT_MA_WRITE: {
             struct ma_write_event *ev = cp->payload;
-            ingress_addr_size(origin, CAT_BEFORE_WRITE, ev->addr, ev->size);
+            ingress_addr_size(&ctx, CAT_BEFORE_WRITE, ev->addr, ev->size);
             return PS_OK;
         }
         case EVENT_STACKTRACE_ENTER: {
             stacktrace_event_t *ev = cp->payload;
-            ingress_stacktrace_enter(origin, ev->caller);
+            ingress_stacktrace_enter(&ctx, ev->caller);
             return PS_OK;
         }
         case EVENT_STACKTRACE_EXIT:
-            ingress_stacktrace_exit(origin);
+            ingress_stacktrace_exit(&ctx);
             return PS_OK;
         default:
             return PS_OK;
@@ -306,42 +309,45 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
 PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
+    context_t ctx           = *origin;
+    ctx.type                = EVENT_MODULE_INTERCEPT;
+    ctx.src_type            = cp->src_type;
 
     switch (cp->src_type) {
         case EVENT_MA_AREAD: {
             struct ma_aread_event *ev = cp->payload;
-            ingress_addr_size(origin, CAT_BEFORE_AREAD, ev->addr, ev->size);
+            ingress_addr_size(&ctx, CAT_BEFORE_AREAD, ev->addr, ev->size);
             return PS_OK;
         }
         case EVENT_MA_AWRITE: {
             struct ma_awrite_event *ev = cp->payload;
-            ingress_addr_size_val(origin, CAT_BEFORE_AWRITE, ev->addr, ev->size,
+            ingress_addr_size_val(&ctx, CAT_BEFORE_AWRITE, ev->addr, ev->size,
                                   sized_arg(ev->size, ev->val));
             return PS_OK;
         }
         case EVENT_MA_RMW: {
             struct ma_rmw_event *ev = cp->payload;
-            ingress_addr_size_val_op(origin, CAT_BEFORE_RMW, ev->addr,
+            ingress_addr_size_val_op(&ctx, CAT_BEFORE_RMW, ev->addr,
                                      ev->size, sized_arg(ev->size, ev->val),
                                      ev->op);
             return PS_OK;
         }
         case EVENT_MA_XCHG: {
             struct ma_xchg_event *ev = cp->payload;
-            ingress_addr_size_val(origin, CAT_BEFORE_XCHG, ev->addr, ev->size,
+            ingress_addr_size_val(&ctx, CAT_BEFORE_XCHG, ev->addr, ev->size,
                                   sized_arg(ev->size, ev->val));
             return PS_OK;
         }
         case EVENT_MA_CMPXCHG:
         case EVENT_MA_CMPXCHG_WEAK: {
             struct ma_cmpxchg_event *ev = cp->payload;
-            ingress_cmpxchg(origin, CAT_BEFORE_CMPXCHG, ev->addr, ev->size,
+            ingress_cmpxchg(&ctx, CAT_BEFORE_CMPXCHG, ev->addr, ev->size,
                             sized_arg(ev->size, ev->cmp),
                             sized_arg(ev->size, ev->val));
             return PS_OK;
         }
         case EVENT_MA_FENCE:
-            ingress_fence(origin, CAT_BEFORE_FENCE);
+            ingress_fence(&ctx, CAT_BEFORE_FENCE);
             return PS_OK;
         default:
             return PS_OK;
@@ -351,35 +357,38 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
+    context_t ctx           = *origin;
+    ctx.type                = EVENT_MODULE_INTERCEPT;
+    ctx.src_type            = cp->src_type;
 
     switch (cp->src_type) {
         case EVENT_MA_AREAD: {
             struct ma_aread_event *ev = cp->payload;
-            ingress_addr_size(origin, CAT_AFTER_AREAD, ev->addr, ev->size);
+            ingress_addr_size(&ctx, CAT_AFTER_AREAD, ev->addr, ev->size);
             return PS_OK;
         }
         case EVENT_MA_AWRITE: {
             struct ma_awrite_event *ev = cp->payload;
-            ingress_addr_size_val(origin, CAT_AFTER_AWRITE, ev->addr, ev->size,
+            ingress_addr_size_val(&ctx, CAT_AFTER_AWRITE, ev->addr, ev->size,
                                   sized_arg(ev->size, ev->val));
             return PS_OK;
         }
         case EVENT_MA_RMW: {
             struct ma_rmw_event *ev = cp->payload;
-            ingress_addr_size_val_op(origin, CAT_AFTER_RMW, ev->addr, ev->size,
+            ingress_addr_size_val_op(&ctx, CAT_AFTER_RMW, ev->addr, ev->size,
                                      sized_arg(ev->size, ev->val), ev->op);
             return PS_OK;
         }
         case EVENT_MA_XCHG: {
             struct ma_xchg_event *ev = cp->payload;
-            ingress_addr_size_val(origin, CAT_AFTER_XCHG, ev->addr, ev->size,
+            ingress_addr_size_val(&ctx, CAT_AFTER_XCHG, ev->addr, ev->size,
                                   sized_arg(ev->size, ev->val));
             return PS_OK;
         }
         case EVENT_MA_CMPXCHG:
         case EVENT_MA_CMPXCHG_WEAK: {
             struct ma_cmpxchg_event *ev = cp->payload;
-            ingress_cmpxchg(origin,
+            ingress_cmpxchg(&ctx,
                             sized_eq(ev->size, ev->old, ev->val) ?
                                 CAT_AFTER_CMPXCHG_S :
                                 CAT_AFTER_CMPXCHG_F,
@@ -388,7 +397,7 @@ PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
             return PS_OK;
         }
         case EVENT_MA_FENCE:
-            ingress_fence(origin, CAT_AFTER_FENCE);
+            ingress_fence(&ctx, CAT_AFTER_FENCE);
             return PS_OK;
         default:
             return PS_OK;

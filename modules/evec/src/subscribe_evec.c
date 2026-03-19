@@ -205,6 +205,8 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
     context_t ctx           = *origin;
+    ctx.type                = EVENT_MODULE_INTERCEPT;
+    ctx.src_type            = cp->src_type;
 
     context_t yield_ctx = ctx;
     yield_ctx.cat       = CAT_SYS_YIELD;

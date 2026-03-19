@@ -23,9 +23,10 @@
 #include <lotto/util/once.h>
 
 #define log(ctx, fmt, ...)                                                     \
-    logger_debugf("[t:%lu, " CONTRACT("clk:%lu, ") "pc:0x%lx] " fmt "\n",      \
-                  ctx->id, CONTRACT(_ghost.clk, ) ctx->pc & 0xfff,             \
-                  ##__VA_ARGS__)
+    logger_debugf("[t:%lu, " CONTRACT("clk:%lu, ") "pc:0x%lx, type:%u, "       \
+                  "src:%u] " fmt "\n",                                         \
+                  ctx->id, CONTRACT(_ghost.clk, ) ctx->pc & 0xfff, ctx->type,  \
+                  ctx->src_type, ##__VA_ARGS__)
 
 CONTRACT(enum state{
     INIT     = 0,
@@ -98,7 +99,8 @@ CONTRACT(static void _check_plan(const context_t *ctx, plan_t p) {
             break;
         default:
             plan_print(p);
-            logger_fatalf("(cat: %s) plan mismatch\n", category_str(ctx->cat));
+            logger_fatalf("(cat: %s, type:%u, src:%u) plan mismatch\n",
+                          category_str(ctx->cat), ctx->type, ctx->src_type);
     }
 })
 

@@ -52,9 +52,11 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     }
 
     await_event_t *ev = cp->payload;
-    ctx         = *origin;
-    ctx.cat     = await_cat();
-    ctx.args[0] = arg_ptr(ev->addr);
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = await_cat();
+    ctx.args[0]  = arg_ptr(ev->addr);
     runtime_ingress(&ctx);
     return PS_OK;
 })

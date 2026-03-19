@@ -20,6 +20,8 @@
 typedef struct context {
     struct metadata _; ///< Dice metadata prefix for pubsub callbacks
     metadata_t *self;  ///< Original Dice self metadata for the capture
+    type_id type;      ///< Semantic ingress event type
+    type_id src_type;  ///< Normalized source event type
     category_t cat; ///< Category of interception
     task_id id;     ///< Task ID
     task_id vid;    ///< Virtual task ID (NO_TASK if not available)
@@ -35,6 +37,18 @@ typedef struct context {
 
 void context_print(const context_t *ctx);
 
+static inline bool
+context_has_type(const context_t *ctx)
+{
+    return ctx != NULL && ctx->type != 0;
+}
+
+static inline bool
+context_has_src_type(const context_t *ctx)
+{
+    return ctx != NULL && ctx->src_type != 0;
+}
+
 /*******************************************************************************
  * Context constructor macros
  ******************************************************************************/
@@ -45,6 +59,8 @@ void context_print(const context_t *ctx);
 
 #define ctx(...)                                                               \
     (&(context_t){.self = NULL,                                                \
+                  .type = 0,                                                   \
+                  .src_type = 0,                                               \
                   .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
                   .vid  = NO_TASK,                                             \
@@ -57,6 +73,8 @@ void context_print(const context_t *ctx);
 
 #define ctx_pc(...)                                                            \
     (&(context_t){.self = NULL,                                                \
+                  .type = 0,                                                   \
+                  .src_type = 0,                                               \
                   .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
                   .vid  = NO_TASK,                                             \
@@ -67,6 +85,7 @@ void context_print(const context_t *ctx);
                   __VA_ARGS__})
 
 #define ctx_cat(ctx, c) ((ctx)->cat = c, ctx)
+#define ctx_types(ctx, t, st) ((ctx)->type = (t), (ctx)->src_type = (st), ctx)
 
 #define ctx_empty (&(context_t){0})
 

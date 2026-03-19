@@ -94,4 +94,4 @@ _ichpt_handle(const context_t *ctx, event_t *e)
         e->is_chpt = true;
     }
 }
-REGISTER_HANDLER(_ichpt_handle)
+REGISTER_SEQUENCER_HANDLER(_ichpt_handle)

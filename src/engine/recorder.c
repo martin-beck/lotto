@@ -213,6 +213,8 @@ recorder_record(const context_t *ctx, clk_t clk)
     r->kind = RECORD_SCHED;
     r->id   = ctx->id;
     r->cat  = ctx->cat;
+    r->type = ctx->type;
+    r->src_type = ctx->src_type;
     r->pc   = ctx->pc;
     r->clk  = clk;
     statemgr_marshal(&r->data, STATE_TYPE_PERSISTENT);

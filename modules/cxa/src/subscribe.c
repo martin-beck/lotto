@@ -42,9 +42,11 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
     }
 
     struct __cxa_guard_acquire_event *ev = cp->payload;
-    ctx         = *origin;
-    ctx.cat     = CAT_CALL;
-    ctx.args[0] = arg_ptr(ev->addr);
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_CALL;
+    ctx.args[0]  = arg_ptr(ev->addr);
     (void)runtime_ingress_before(&ctx);
     return PS_OK;
 })
@@ -52,11 +54,16 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
+    context_t ctx;
 
     if (cp->src_type != EVENT_CXA_GUARD_CALL) {
         return PS_OK;
     }
 
-    runtime_ingress_after(origin->func);
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_CALL;
+    runtime_ingress_after(&ctx);
     return PS_OK;
 })

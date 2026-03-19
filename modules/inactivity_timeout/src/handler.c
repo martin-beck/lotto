@@ -14,7 +14,7 @@ static struct event_data {
     task_id id;
     uint64_t alarm;
 } _event_data;
-LOTTO_SUBSCRIBE(EVENT_ENGINE__NEXT_TASK, {
+LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     const context_t *ctx = as_any(v);
     if (ctx) {
         _event_data.id = ctx->id;
@@ -91,4 +91,4 @@ _inactivity_alarm(const context_t *ctx, event_t *e)
     }
 }
 
-REGISTER_HANDLER(_inactivity_alarm)
+REGISTER_SEQUENCER_HANDLER(_inactivity_alarm)

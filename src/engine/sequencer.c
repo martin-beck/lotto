@@ -32,8 +32,9 @@
 #include <vsync/spinlock/caslock.h>
 
 #define log(ctx, fmt, ...)                                                     \
-    logger_debugf("[t:%lu, clk:%lu, pc:0x%lx] " fmt "\n", ctx->id, _seq.clk,   \
-                  ctx->pc & 0xfff, ##__VA_ARGS__)
+    logger_debugf("[t:%lu, clk:%lu, pc:0x%lx, type:%u, src:%u] " fmt "\n",     \
+                  ctx->id, _seq.clk, ctx->pc & 0xfff, ctx->type,               \
+                  ctx->src_type, ##__VA_ARGS__)
 
 typedef struct {
     _Atomic(clk_t) clk;
@@ -48,6 +49,8 @@ typedef struct {
     uint64_t switch_count;
     bool last_chpt;
     category_t prev_cat;
+    type_id prev_type;
+    type_id prev_src_type;
 
     task_id prev_task;
     task_id next_task;
@@ -58,7 +61,7 @@ static sequencer_t _seq;
 clk_t clk_bound;
 uint64_t time_bound_ns;
 
-LOTTO_ADVERTISE_TYPE(EVENT_ENGINE__NEXT_TASK)
+LOTTO_ADVERTISE_TYPE(EVENT_SEQUENCER_RESUME)
 
 LOTTO_SUBSCRIBE(EVENT_ENGINE__AFTER_UNMARSHAL_CONFIG, {
     (void)v;
@@ -83,6 +86,8 @@ sequencer_reset(void)
     _seq.prev_task     = NO_TASK;
     _seq.next_task     = NO_TASK;
     _seq.prev_cat      = CAT_NONE;
+    _seq.prev_type     = 0;
+    _seq.prev_src_type = 0;
     const char *var    = getenv("LOTTO_DEBUG_CLK_BOUND");
     if (var) {
         clk_bound = atoll(var);
@@ -192,6 +197,8 @@ sequencer_capture(const context_t *ctx)
         e.should_record || _granularity_should_record(ctx, &e, &p);
     _seq.next_task = next;
     _seq.prev_cat  = ctx->cat;
+    _seq.prev_type = ctx->type;
+    _seq.prev_src_type = ctx->src_type;
 
     /* event counting */
     {
@@ -220,7 +227,7 @@ void
 sequencer_resume(const context_t *ctx)
 {
     struct value val = any(ctx);
-    LOTTO_PUBLISH(EVENT_ENGINE__NEXT_TASK, val);
+    PS_PUBLISH(CHAIN_SEQUENCER_RESUME, EVENT_SEQUENCER_RESUME, &val, 0);
     if (_seq.clk == 0)
         return;
     if (ctx->id == 1 && ctx->cat == CAT_NONE)

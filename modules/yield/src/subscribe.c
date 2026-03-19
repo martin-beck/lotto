@@ -35,8 +35,10 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    ctx     = *origin;
-    ctx.cat = CAT_USER_YIELD;
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_USER_YIELD;
     runtime_ingress(&ctx);
     return PS_OK;
 })

@@ -51,25 +51,33 @@ PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_ROGUE, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
+    context_t ctx;
 
     if (cp->src_type != EVENT_ROGUE) {
         return PS_OK;
     }
 
-    runtime_ingress(
-        ctx(.self = origin->self, .pc = origin->pc, .func = origin->func,
-            .cat = CAT_TASK_BLOCK));
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_TASK_BLOCK;
+    runtime_ingress(&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
-    capture_point *cp = (capture_point *)event;
+    const context_t *origin = (const context_t *)md;
+    capture_point *cp       = (capture_point *)event;
+    context_t ctx;
 
     if (cp->src_type != EVENT_ROGUE) {
         return PS_OK;
     }
 
-    rogue_event_t *ev = cp->payload;
-    runtime_ingress_after(ev->func);
+    ctx          = *origin;
+    ctx.type     = EVENT_MODULE_INTERCEPT;
+    ctx.src_type = cp->src_type;
+    ctx.cat      = CAT_TASK_BLOCK;
+    runtime_ingress_after(&ctx);
     return PS_OK;
 })

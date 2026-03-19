@@ -9,7 +9,7 @@
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/real.h>
 
-LOTTO_ADVERTISE_TYPE(EVENT_ENGINE__CAPTURE)
+LOTTO_ADVERTISE_TYPE(EVENT_SEQUENCER_CAPTURE)
 
 void handle_creation(const context_t *ctx, event_t *e);
 
@@ -18,8 +18,8 @@ dispatch_event(const context_t *ctx, event_t *e)
 {
     handle_creation(ctx, e);
 
-    /* dispatch to handlers in slot order through the capture chain */
-    PS_PUBLISH(CHAIN_LOTTO_DEFAULT, EVENT_ENGINE__CAPTURE, e,
+    /* dispatch to handlers in slot order through the sequencer capture chain */
+    PS_PUBLISH(CHAIN_SEQUENCER_CAPTURE, EVENT_SEQUENCER_CAPTURE, e,
                (struct metadata *)ctx);
 
     if (!e->is_chpt) {

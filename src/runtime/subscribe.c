@@ -133,12 +133,12 @@ PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_PTHREAD_DETACH, {
     int ret = EINTR;
     context_t ctx           = *ctx_pc(.self = md, .pc = (uintptr_t)ev->pc,
                                       .func = __FUNCTION__);
-    capture_detach_event dev = {
+    capture_task_detach_event dev = {
         .thread = ev->thread,
         .ret    = &ret,
     };
-    capture_point cp = {.src_type = EVENT_DETACH, .detach = &dev};
-    PS_PUBLISH(CHAIN_INGRESS, EVENT_DETACH, &cp, (metadata_t *)&ctx);
+    capture_point cp = {.src_type = EVENT_TASK_DETACH, .task_detach = &dev};
+    PS_PUBLISH(CHAIN_INGRESS, EVENT_TASK_DETACH, &cp, (metadata_t *)&ctx);
     ASSERT(ret != EINTR);
     return PS_OK;
 })
