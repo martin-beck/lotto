@@ -10,7 +10,7 @@
 #include <lotto/base/trace_file.h>
 #include <lotto/engine/engine.h> // for engine_init
 #include <lotto/engine/pubsub.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/memory.h>

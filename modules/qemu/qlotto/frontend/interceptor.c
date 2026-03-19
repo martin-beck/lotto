@@ -16,7 +16,7 @@
 #include <lotto/qlotto/gdb/gdb_server_stub.h>
 #include <lotto/qlotto/gdb/handling/stop_reason.h>
 #include <lotto/qlotto/mapping.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/runtime/runtime.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/ensure.h>
@@ -249,7 +249,7 @@ _intercept(context_t *ctx, const char *fname)
     ctx->icount = icounter_get(&frontend_state.inline_insn_count);
 
     if (fname)
-        intercept_capture(ctx);
+        runtime_ingress(ctx);
     else {
         if (ctx->args[0].value.u32 == REASON_SUCCESS) {
             lotto_exit(ctx, ctx->args[0].value.u32);

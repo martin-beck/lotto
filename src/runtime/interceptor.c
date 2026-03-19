@@ -6,7 +6,7 @@
 #include <lotto/base/context.h>
 #include <lotto/check.h>
 #include <lotto/engine/catmgr.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/runtime/mediator.h>
 #include <lotto/runtime/runtime.h>
 #include <lotto/sys/assert.h>
@@ -128,9 +128,9 @@ _intercept_return_resume(mediator_t *m, context_t *ctx)
  * public interface
  ******************************************************************************/
 
-// intercept_event
+// normalized runtime ingress
 void
-intercept_capture(context_t *ctx)
+runtime_ingress(context_t *ctx)
 {
     if (!lotto_intercept_initialized())
         return;
@@ -142,9 +142,9 @@ intercept_capture(context_t *ctx)
 }
 
 
-// intercept_call
+// normalized runtime ingress for blocking calls
 mediator_t *
-intercept_before_call(context_t *ctx)
+runtime_ingress_before(context_t *ctx)
 {
     if (!lotto_intercept_initialized()) {
         logger_debugf(
@@ -159,7 +159,7 @@ intercept_before_call(context_t *ctx)
 }
 
 void
-intercept_after_call(const char *func)
+runtime_ingress_after(const char *func)
 {
     if (!lotto_intercept_initialized()) {
         logger_debugf("[?] after call '%s' (interceptor not initialized yet)\n",
@@ -187,7 +187,7 @@ intercept_lookup_call(const char *func)
     }
 
     context_t *ctx = ctx(.func = func, .cat = CAT_CALL);
-    (void)intercept_before_call(ctx);
+    (void)runtime_ingress_before(ctx);
 
     logger_debugf("[%lu] lookup call '%s'\n", ctx->id, func);
     /* search for real function and return its pointer */

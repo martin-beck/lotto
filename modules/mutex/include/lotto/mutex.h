@@ -8,6 +8,20 @@
 #define LOTTO_MUTEX_H
 
 #include <stddef.h>
+#include <dice/types.h>
+
+int intercept_mutex_tryacquire(void *addr, const void *pc)
+    __attribute__((weak));
+int intercept_mutex_tryacquire_named(const char *func, void *addr,
+                                     const void *pc) __attribute__((weak));
+void intercept_mutex_acquire(void *addr, const void *pc)
+    __attribute__((weak));
+void intercept_mutex_acquire_named(const char *func, void *addr,
+                                   const void *pc) __attribute__((weak));
+void intercept_mutex_release(void *addr, const void *pc)
+    __attribute__((weak));
+void intercept_mutex_release_named(const char *func, void *addr,
+                                   const void *pc) __attribute__((weak));
 
 int _lotto_mutex_tryacquire(void *addr, const void *pc) __attribute__((weak));
 int _lotto_mutex_tryacquire_named(const char *func, void *addr, const void *pc)
@@ -15,9 +29,18 @@ int _lotto_mutex_tryacquire_named(const char *func, void *addr, const void *pc)
 void _lotto_mutex_acquire(void *addr, const void *pc) __attribute__((weak));
 void _lotto_mutex_acquire_named(const char *func, void *addr, const void *pc)
     __attribute__((weak));
+void _lotto_mutex_acquire_named_src(type_id src_type, const char *func,
+                                    void *addr,
+                                    const void *pc) __attribute__((weak));
 void _lotto_mutex_release(void *addr, const void *pc) __attribute__((weak));
 void _lotto_mutex_release_named(const char *func, void *addr, const void *pc)
     __attribute__((weak));
+void _lotto_mutex_release_named_src(type_id src_type, const char *func,
+                                    void *addr,
+                                    const void *pc) __attribute__((weak));
+int _lotto_mutex_tryacquire_named_src(type_id src_type, const char *func,
+                                      void *addr,
+                                      const void *pc) __attribute__((weak));
 
 /**
  * Acquires a mutex.
@@ -27,8 +50,8 @@ void _lotto_mutex_release_named(const char *func, void *addr, const void *pc)
 static inline void
 lotto_mutex_acquire(void *addr, void *pc)
 {
-    if (_lotto_mutex_acquire != NULL) {
-        _lotto_mutex_acquire(addr, __builtin_return_address(0));
+    if (intercept_mutex_acquire != NULL) {
+        intercept_mutex_acquire(addr, __builtin_return_address(0));
     }
 }
 
@@ -41,8 +64,8 @@ lotto_mutex_acquire(void *addr, void *pc)
 static inline int
 lotto_mutex_tryacquire(void *addr)
 {
-    if (_lotto_mutex_tryacquire != NULL) {
-        return _lotto_mutex_tryacquire(addr, __builtin_return_address(0));
+    if (intercept_mutex_tryacquire != NULL) {
+        return intercept_mutex_tryacquire(addr, __builtin_return_address(0));
     }
     return 0;
 }
@@ -55,8 +78,8 @@ lotto_mutex_tryacquire(void *addr)
 static inline void
 lotto_mutex_release(void *addr, void *pc)
 {
-    if (_lotto_mutex_release != NULL) {
-        _lotto_mutex_release(addr, __builtin_return_address(0));
+    if (intercept_mutex_release != NULL) {
+        intercept_mutex_release(addr, __builtin_return_address(0));
     }
 }
 

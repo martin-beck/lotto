@@ -7,7 +7,7 @@
 #include <lotto/check.h>
 #include <lotto/modules/qemu/callbacks.h>
 #include <lotto/qlotto/frontend/intercept_translation.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/runtime/runtime.h>
 #include <lotto/sys/ensure.h>
 #include <lotto/sys/string.h>

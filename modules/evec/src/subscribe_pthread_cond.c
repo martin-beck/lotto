@@ -16,7 +16,7 @@
 #include <lotto/evec.h>
 #include <lotto/mutex.h>
 #include <lotto/rsrc_deadlock.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/sys/logger.h>
 
 static int

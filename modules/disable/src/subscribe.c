@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/sys/assert.h>
 #include <lotto/unsafe/disable.h>
 #include <lotto/util/macros.h>

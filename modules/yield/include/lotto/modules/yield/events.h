@@ -1,10 +1,11 @@
 /**
  * @file events.h
- * @brief Yield module event declarations.
+ * @brief Yield semantic ingress event identifiers.
  */
 #ifndef LOTTO_MODULES_YIELD_EVENTS_H
 #define LOTTO_MODULES_YIELD_EVENTS_H
 
-#define EVENT_SCHED_YIELD 136
+#define EVENT_LOTTO_YIELD 163
+#define EVENT_SCHED_YIELD 169
 
 #endif

@@ -11,7 +11,7 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/recorder.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/real.h>
 #include <lotto/sys/sched.h>

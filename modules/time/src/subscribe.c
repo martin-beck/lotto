@@ -1,4 +1,9 @@
 #include <alloca.h>
+#include <dice/chains/capture.h>
+#include <dice/chains/intercept.h>
+#include <dice/self.h>
+#include <dice/module.h>
+#include <dice/pubsub.h>
 #include <poll.h>
 #include <signal.h>
 #include <time.h>
@@ -11,13 +16,29 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/recorder.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/modules/time/events.h>
+#include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/ingress.h>
+#include <lotto/runtime/ingress_events.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/real.h>
 #include <lotto/sys/sched.h>
 #include <lotto/unsafe/time.h>
 #include <lotto/util/casts.h>
 #include <sys/types.h>
+
+typedef struct {
+    const char *func;
+} time_yield_event_t;
+
+PS_ADVERTISE_TYPE(EVENT_TIME_YIELD)
+
+static inline void
+intercept_time_yield(const char *func)
+{
+    time_yield_event_t ev = {.func = func};
+    PS_PUBLISH(INTERCEPT_EVENT, EVENT_TIME_YIELD, &ev, 0);
+}
 
 int
 sched_setaffinity(__pid_t pid, size_t s, const cpu_set_t *cset)
@@ -109,7 +130,7 @@ nanosleep(const struct timespec *req, struct timespec *rem)
     ctx.func   = "nanosleep";
 
     while (cur_ns < ns_end) {
-        intercept_capture(&ctx);
+        intercept_time_yield(ctx.func);
         cur_ns = clock_ns();
     }
     return 0;
@@ -129,7 +150,7 @@ usleep(useconds_t usec)
     ctx.func   = "usleep";
 
     while (cur_ns < ns_end) {
-        intercept_capture(&ctx);
+        intercept_time_yield(ctx.func);
         cur_ns = clock_ns();
     }
     return 0;
@@ -149,7 +170,7 @@ sleep(unsigned int seconds)
     ctx.func   = "sleep";
 
     while (cur_ns < ns_end) {
-        intercept_capture(&ctx);
+        intercept_time_yield(ctx.func);
         cur_ns = clock_ns();
     }
     return 0;
@@ -173,3 +194,25 @@ sleep(unsigned int seconds)
     return 0;
 }
 #endif
+
+PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_TIME_YIELD, {
+    time_yield_event_t *ev = EVENT_PAYLOAD(event);
+    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
+    capture_point cp = {.src_type = EVENT_TIME_YIELD, .payload = ev};
+    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
+    return PS_OK;
+})
+
+PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
+    const context_t *origin = (const context_t *)md;
+    capture_point *cp       = (capture_point *)event;
+    context_t ctx           = *origin;
+
+    if (cp->src_type != EVENT_TIME_YIELD) {
+        return PS_OK;
+    }
+
+    ctx.cat = CAT_SYS_YIELD;
+    runtime_ingress(&ctx);
+    return PS_OK;
+})

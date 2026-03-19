@@ -10,7 +10,7 @@
 #include <lotto/qlotto/frontend/intercept_translation.h>
 #include <lotto/qlotto/frontend/interceptor.h>
 #include <lotto/qlotto/mapping.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/sys/ensure.h>
 #include <lotto/sys/stdlib.h>
 

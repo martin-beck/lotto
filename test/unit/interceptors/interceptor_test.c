@@ -11,7 +11,7 @@
 #include <lotto/engine/catmgr.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/pubsub.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/runtime/mediator.h>
 #include <lotto/states/handlers/deadlock.h>
 #include <lotto/states/handlers/mutex.h>

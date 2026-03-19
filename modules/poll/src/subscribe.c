@@ -3,6 +3,12 @@
 #include <signal.h>
 #include <time.h>
 
+#include <dice/chains/capture.h>
+#include <dice/chains/intercept.h>
+#include <dice/self.h>
+#include <dice/module.h>
+#include <dice/pubsub.h>
+
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "poll.h"
 #include <lotto/base/callrec.h>
@@ -12,7 +18,10 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/recorder.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/modules/poll/events.h>
+#include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/ingress.h>
+#include <lotto/runtime/ingress_events.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/real.h>
 #include <lotto/sys/sched.h>
@@ -20,12 +29,24 @@
 #include <lotto/util/casts.h>
 #include <sys/types.h>
 
+typedef struct poll_event {
+    poll_args_t *args;
+} poll_event_t;
+
+PS_ADVERTISE_TYPE(EVENT_POLL)
+
+static void
+intercept_poll(poll_args_t *args)
+{
+    poll_event_t ev = {.args = args};
+    PS_PUBLISH(INTERCEPT_EVENT, EVENT_POLL, &ev, 0);
+}
+
 int
 poll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
     poll_args_t args = {.fds = fds, .nfds = nfds, .timeout = timeout};
-    intercept_capture(
-        ctx(.func = __FUNCTION__, .cat = CAT_POLL, .args = {arg_ptr(&args)}));
+    intercept_poll(&args);
     return args.ret;
 }
 
@@ -46,3 +67,27 @@ ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout_ts,
     pthread_sigmask(SIG_SETMASK, &origmask, NULL);
     return result;
 }
+
+PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_POLL, {
+    poll_event_t *ev = EVENT_PAYLOAD(event);
+    context_t ctx    = *ctx(.self = self_md(), .func = "poll");
+    capture_point cp = {.src_type = EVENT_POLL, .payload = ev};
+    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
+    return PS_OK;
+})
+
+PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
+    const context_t *origin = (const context_t *)md;
+    capture_point *cp       = (capture_point *)event;
+    context_t ctx           = *origin;
+
+    if (cp->src_type != EVENT_POLL) {
+        return PS_OK;
+    }
+
+    poll_event_t *ev = cp->payload;
+    ctx.cat          = CAT_POLL;
+    ctx.args[0]      = arg_ptr(ev->args);
+    runtime_ingress(&ctx);
+    return PS_OK;
+})

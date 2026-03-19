@@ -12,7 +12,7 @@
 #include <dice/self.h>
 #include <lotto/base/record.h>
 #include <lotto/base/task_id.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 #include <lotto/runtime/runtime.h>
 #include <lotto/sys/logger.h>
 #include <lotto/sys/real.h>

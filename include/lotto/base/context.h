@@ -19,6 +19,7 @@
  */
 typedef struct context {
     struct metadata _; ///< Dice metadata prefix for pubsub callbacks
+    metadata_t *self;  ///< Original Dice self metadata for the capture
     category_t cat; ///< Category of interception
     task_id id;     ///< Task ID
     task_id vid;    ///< Virtual task ID (NO_TASK if not available)
@@ -43,7 +44,8 @@ void context_print(const context_t *ctx);
 #define ctx_raw(...) (&(context_t){.args = {0}, __VA_ARGS__})
 
 #define ctx(...)                                                               \
-    (&(context_t){.cat  = CAT_NONE,                                            \
+    (&(context_t){.self = NULL,                                                \
+                  .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
                   .vid  = NO_TASK,                                             \
                   .pc   = ((uintptr_t)__builtin_return_address(CTX_LEVELS)),   \
@@ -54,7 +56,8 @@ void context_print(const context_t *ctx);
                   __VA_ARGS__})
 
 #define ctx_pc(...)                                                            \
-    (&(context_t){.cat  = CAT_NONE,                                            \
+    (&(context_t){.self = NULL,                                                \
+                  .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
                   .vid  = NO_TASK,                                             \
                   .func = "UNKNOWN",                                           \

@@ -9,7 +9,7 @@
 #include <lotto/qemu/lotto_udf.h>
 #include <lotto/qlotto/frontend/interceptor.h>
 #include <lotto/qlotto/frontend/perf.h>
-#include <lotto/runtime/intercept.h>
+#include <lotto/runtime/ingress.h>
 
 #define MAX_CPUS 1024
 

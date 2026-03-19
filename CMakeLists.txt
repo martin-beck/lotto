@@ -59,7 +59,7 @@ set(DICE_MAX_BUILTIN_SLOTS
     CACHE STRING "" FORCE)
 
 set(DICE_MAX_TYPES
-    150
+    180
     CACHE STRING "" FORCE)
 
 add_compile_definitions(DICE_XTOR_PRIO=1000)

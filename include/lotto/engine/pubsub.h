@@ -15,6 +15,9 @@
 /* Lotto pubsub chains. */
 #define CHAIN_LOTTO_CONTROL 7
 #define CHAIN_LOTTO_DEFAULT 8
+#define CHAIN_INGRESS       9
+#define CHAIN_INGRESS_BEFORE 10
+#define CHAIN_INGRESS_AFTER 11
 
 /* Advertise a Lotto event type name for debugging and tracing output. */
 #define LOTTO_ADVERTISE_TYPE(TYPE)                                             \
