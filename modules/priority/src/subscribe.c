@@ -1,10 +1,10 @@
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include <lotto/engine/pubsub.h>
+#include <dice/self.h>
 #include <lotto/base/context.h>
+#include <lotto/engine/pubsub.h>
 #include <lotto/modules/priority/events.h>
 #include <lotto/priority.h>
 #include <lotto/runtime/capture_point.h>
@@ -16,7 +16,7 @@ PS_ADVERTISE_TYPE(EVENT_PRIORITY)
 static void
 _lotto_priority(int64_t priority)
 {
-    context_t ctx       = *ctx(.self = self_md(), .func = __FUNCTION__);
+    context_origin ctx  = *ctx_origin(.self = self_md(), .func = __FUNCTION__);
     priority_event_t ev = {.priority = priority};
     capture_point cp    = {.src_type = EVENT_PRIORITY, .payload = &ev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
@@ -60,8 +60,8 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_PRIORITY, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
     if (cp->src_type != EVENT_PRIORITY) {
         return PS_OK;
     }

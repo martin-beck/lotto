@@ -204,10 +204,9 @@ _mutex_handle(const context_t *ctx, event_t *e)
 
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
-    uint64_t addr = context_mutex_addr(ctx);
     switch (context_mutex_event(ctx)) {
         case CONTEXT_MUTEX_ACQUIRE:
-            _handle_acquire(ctx->id, addr);
+            _handle_acquire(ctx->id, context_mutex_addr(ctx));
             ASSERT(e->any_task_filter == NULL);
             e->any_task_filter = _should_wait;
             // fallthru
@@ -220,8 +219,9 @@ _mutex_handle(const context_t *ctx, event_t *e)
     }
 
     /* remove waiting tasks from the tset */
-    if (_remove_waiters(&e->tset, ctx->id) && mutex_config()->deadlock_check &&
-        _check_deadlock(ctx->id, addr, NO_TASK)) {
+    if (context_mutex_event(ctx) != CONTEXT_MUTEX_NONE &&
+        _remove_waiters(&e->tset, ctx->id) && mutex_config()->deadlock_check &&
+        _check_deadlock(ctx->id, context_mutex_addr(ctx), NO_TASK)) {
         logger_errorf("Aborting on deadlock\n");
         e->reason = REASON_RSRC_DEADLOCK;
     }
@@ -232,16 +232,16 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     const context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 
-    uint64_t addr = context_mutex_addr(ctx);
     switch (context_mutex_event(ctx)) {
         case CONTEXT_MUTEX_ACQUIRE:
-            _posthandle_acquire(ctx->id, addr);
+            _posthandle_acquire(ctx->id, context_mutex_addr(ctx));
             break;
         case CONTEXT_MUTEX_TRYACQUIRE: {
-            context_mutex_try_set_ret(ctx, _posthandle_tryacquire(ctx->id, addr));
+            context_mutex_try_set_ret(
+                ctx, _posthandle_tryacquire(ctx->id, context_mutex_addr(ctx)));
         } break;
         case CONTEXT_MUTEX_RELEASE:
-            _posthandle_release(ctx->id, addr);
+            _posthandle_release(ctx->id, context_mutex_addr(ctx));
             break;
         default:
             break;

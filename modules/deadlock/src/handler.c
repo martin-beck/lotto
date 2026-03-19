@@ -243,30 +243,44 @@ _deadlock_handle(const context_t *ctx, event_t *e)
     task_id tid = ctx->vid ? ctx->vid : ctx->id;
 
     ASSERT(tid != NO_TASK);
-    uintptr_t addr =
-        (context_has_capture_point(ctx) &&
-         (context_has_event_type(ctx, EVENT_RSRC_ACQUIRING) ||
-          context_has_event_type(ctx, EVENT_RSRC_RELEASED))) ?
-            (uintptr_t)((rsrc_event_t *)ctx->cp->payload)->addr :
-            (uintptr_t)context_mutex_addr(ctx);
     switch (context_has_capture_point(ctx) ? context_event_type(ctx) : 0) {
         case EVENT_MUTEX_ACQUIRE:
-        case EVENT_RSRC_ACQUIRING:
-            if (_check_deadlock(tid, addr)) {
+            if (_check_deadlock(tid, (uintptr_t)context_mutex_addr(ctx))) {
                 e->reason = REASON_RSRC_DEADLOCK;
             }
-            /* fallthru */
-        case EVENT_MUTEX_TRYACQUIRE:
+            if (_is_lost(tid, (uintptr_t)context_mutex_addr(ctx))) {
+                e->reason = REASON_RSRC_DEADLOCK;
+            }
+            _acquiring(tid, (uintptr_t)context_mutex_addr(ctx));
+            break;
+        case EVENT_MUTEX_TRYACQUIRE: {
+            uintptr_t addr = (uintptr_t)context_mutex_addr(ctx);
             if (_is_lost(tid, addr)) {
                 e->reason = REASON_RSRC_DEADLOCK;
             }
             if (context_mutex_try_ok(ctx)) {
                 _acquiring(tid, addr);
             }
+        } break;
+        case EVENT_RSRC_ACQUIRING:
+            if (_check_deadlock(tid,
+                                (uintptr_t)((rsrc_event_t *)ctx->cp->payload)
+                                    ->addr)) {
+                e->reason = REASON_RSRC_DEADLOCK;
+            }
+            if (_is_lost(tid, (uintptr_t)((rsrc_event_t *)ctx->cp->payload)
+                                   ->addr)) {
+                e->reason = REASON_RSRC_DEADLOCK;
+            }
             break;
         case EVENT_MUTEX_RELEASE:
+            if (!_released(tid, (uintptr_t)context_mutex_addr(ctx))) {
+                e->reason = REASON_RSRC_DEADLOCK;
+            }
+            break;
         case EVENT_RSRC_RELEASED:
-            if (!_released(tid, addr)) {
+            if (!_released(tid, (uintptr_t)((rsrc_event_t *)ctx->cp->payload)
+                                   ->addr)) {
                 e->reason = REASON_RSRC_DEADLOCK;
             }
             break;
@@ -276,27 +290,59 @@ _deadlock_handle(const context_t *ctx, event_t *e)
             }
             break;
         default:
-            switch (ctx->cat) {
-                case CAT_MUTEX_ACQUIRE:
-                case CAT_RSRC_ACQUIRING:
-                    if (_check_deadlock(tid, addr)) {
+            switch (context_mutex_event(ctx)) {
+                case CONTEXT_MUTEX_ACQUIRE:
+                    if (_check_deadlock(tid, (uintptr_t)context_mutex_addr(ctx))) {
                         e->reason = REASON_RSRC_DEADLOCK;
                     }
-                    /* fallthru */
-                case CAT_MUTEX_TRYACQUIRE:
-                    if (_is_lost(tid, addr)) {
+                    if (_is_lost(tid, (uintptr_t)context_mutex_addr(ctx))) {
+                        e->reason = REASON_RSRC_DEADLOCK;
+                    }
+                    _acquiring(tid, (uintptr_t)context_mutex_addr(ctx));
+                    break;
+                case CONTEXT_MUTEX_TRYACQUIRE:
+                    if (_is_lost(tid, (uintptr_t)context_mutex_addr(ctx))) {
                         e->reason = REASON_RSRC_DEADLOCK;
                     }
                     if (context_mutex_try_ok(ctx)) {
-                        _acquiring(tid, addr);
+                        _acquiring(tid, (uintptr_t)context_mutex_addr(ctx));
                     }
                     break;
-                case CAT_MUTEX_RELEASE:
-                case CAT_RSRC_RELEASED:
-                    if (!_released(tid, addr)) {
+                case CONTEXT_MUTEX_RELEASE:
+                    if (!_released(tid, (uintptr_t)context_mutex_addr(ctx))) {
                         e->reason = REASON_RSRC_DEADLOCK;
                     }
                     break;
+                case CONTEXT_MUTEX_NONE:
+                    if (ctx->cat == CAT_RSRC_ACQUIRING) {
+                        uintptr_t addr =
+                            (uintptr_t)((rsrc_event_t *)ctx->cp->payload)->addr;
+                        if (_check_deadlock(tid, addr)) {
+                            e->reason = REASON_RSRC_DEADLOCK;
+                        }
+                        if (_is_lost(tid, addr)) {
+                            e->reason = REASON_RSRC_DEADLOCK;
+                        }
+                    } else if (ctx->cat == CAT_RSRC_RELEASED) {
+                        if (!_released(
+                                tid, (uintptr_t)((rsrc_event_t *)ctx->cp->payload)->addr)) {
+                            e->reason = REASON_RSRC_DEADLOCK;
+                        }
+                    } else if (ctx->cat == CAT_TASK_FINI) {
+                        if (_mark_lost(tid)) {
+                            e->reason = REASON_RSRC_DEADLOCK;
+                        }
+                    }
+                    break;
+            }
+            if (context_mutex_event(ctx) == CONTEXT_MUTEX_NONE &&
+                ctx->cat == CAT_TASK_FINI) {
+                /* handled above */
+            } else if (context_mutex_event(ctx) == CONTEXT_MUTEX_NONE &&
+                       ctx->cat != CAT_RSRC_ACQUIRING &&
+                       ctx->cat != CAT_RSRC_RELEASED &&
+                       ctx->cat != CAT_TASK_FINI) {
+                switch (ctx->cat) {
                 case CAT_TASK_FINI:
                     if (_mark_lost(tid)) {
                         e->reason = REASON_RSRC_DEADLOCK;
@@ -304,6 +350,7 @@ _deadlock_handle(const context_t *ctx, event_t *e)
                     break;
                 default:
                     break;
+                }
             }
             break;
     }

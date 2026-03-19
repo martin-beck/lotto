@@ -5,8 +5,8 @@
 #ifndef LOTTO_RUNTIME_CAPTURE_POINT_H
 #define LOTTO_RUNTIME_CAPTURE_POINT_H
 
-#include <stdbool.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #include <dice/types.h>
 

@@ -1,10 +1,10 @@
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include <lotto/engine/pubsub.h>
+#include <dice/self.h>
 #include <lotto/base/context.h>
+#include <lotto/engine/pubsub.h>
 #include <lotto/modules/rogue/events.h>
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress.h>
@@ -32,46 +32,41 @@ _lotto_region_rogue_leave()
 }
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_ROGUE, {
-    rogue_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
-    capture_point cp = {.src_type = EVENT_ROGUE, .payload = ev};
-    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
+    rogue_event_t *ev  = EVENT_PAYLOAD(event);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = ev->func);
+    capture_point cp   = {.src_type = EVENT_ROGUE, .payload = ev};
+    PS_PUBLISH(CHAIN_INGRESS, EVENT_TASK_BLOCK, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_ROGUE, {
-    rogue_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
-    capture_point cp = {.src_type = EVENT_ROGUE, .payload = ev};
-    PS_PUBLISH(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, &cp,
-               (metadata_t *)&ctx);
+    rogue_event_t *ev  = EVENT_PAYLOAD(event);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = ev->func);
+    capture_point cp   = {.src_type = EVENT_ROGUE, .payload = ev};
+    PS_PUBLISH(CHAIN_INGRESS_AFTER, EVENT_TASK_BLOCK, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
 
-PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
-    context_t ctx;
+PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_TASK_BLOCK, {
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_ROGUE) {
         return PS_OK;
     }
 
-    ctx          = runtime_ingress_module_context_auto(origin, cp);
-    runtime_ingress(&ctx);
+    runtime_ingress_event(origin, EVENT_TASK_BLOCK, cp);
     return PS_OK;
 })
 
-PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
-    context_t ctx;
+PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_TASK_BLOCK, {
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_ROGUE) {
         return PS_OK;
     }
 
-    ctx          = runtime_ingress_module_context_auto(origin, cp);
-    runtime_ingress_after(&ctx);
+    runtime_ingress_event_after(origin, EVENT_TASK_BLOCK, cp);
     return PS_OK;
 })

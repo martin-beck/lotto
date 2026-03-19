@@ -5,9 +5,9 @@
 
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
+#include <dice/self.h>
 
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "poll.h"
@@ -65,16 +65,16 @@ ppoll(struct pollfd *fds, nfds_t nfds, const struct timespec *timeout_ts,
 }
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_POLL, {
-    poll_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = "poll");
-    capture_point cp = {.src_type = EVENT_POLL, .payload = ev};
+    poll_event_t *ev   = EVENT_PAYLOAD(event);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = "poll");
+    capture_point cp   = {.src_type = EVENT_POLL, .payload = ev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
     if (cp->src_type != EVENT_POLL) {
         return PS_OK;
     }

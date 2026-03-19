@@ -44,7 +44,7 @@ context_rwlock_event(const context_t *ctx)
         default:
             break;
     }
-    switch (ctx->cat) {
+    switch (context_compat_category(ctx)) {
         case CAT_RWLOCK_RDLOCK:
             return CONTEXT_RWLOCK_RDLOCK;
         case CAT_RWLOCK_WRLOCK:
@@ -63,62 +63,61 @@ context_rwlock_event(const context_t *ctx)
 static inline uint64_t
 context_rwlock_addr(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_RWLOCK_RDLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_rdlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_WRLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_wrlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_UNLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_unlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TRYRDLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_tryrdlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TRYWRLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_trywrlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TIMEDRDLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_timedrdlock_event *)ctx->cp->payload)
-                        ->lock;
-            case EVENT_RWLOCK_TIMEDWRLOCK:
-                return (uint64_t)(uintptr_t)
-                    ((struct pthread_rwlock_timedwrlock_event *)ctx->cp->payload)
-                        ->lock;
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (context_rwlock_event(ctx)) {
+        case CONTEXT_RWLOCK_RDLOCK:
+            return (uint64_t)(uintptr_t)((struct pthread_rwlock_rdlock_event *)
+                                             ctx->cp->payload)
+                ->lock;
+        case CONTEXT_RWLOCK_WRLOCK:
+            return (uint64_t)(uintptr_t)((struct pthread_rwlock_wrlock_event *)
+                                             ctx->cp->payload)
+                ->lock;
+        case CONTEXT_RWLOCK_UNLOCK:
+            return (uint64_t)(uintptr_t)((struct pthread_rwlock_unlock_event *)
+                                             ctx->cp->payload)
+                ->lock;
+        case CONTEXT_RWLOCK_TRYRDLOCK:
+            return (uint64_t)(uintptr_t)((struct pthread_rwlock_tryrdlock_event
+                                              *)ctx->cp->payload)
+                ->lock;
+        case CONTEXT_RWLOCK_TRYWRLOCK:
+            return (uint64_t)(uintptr_t)((struct pthread_rwlock_trywrlock_event
+                                              *)ctx->cp->payload)
+                ->lock;
+        case CONTEXT_RWLOCK_TIMEDRDLOCK:
+            return (uint64_t)(uintptr_t)((struct
+                                          pthread_rwlock_timedrdlock_event *)
+                                             ctx->cp->payload)
+                ->lock;
+        case CONTEXT_RWLOCK_TIMEDWRLOCK:
+            return (uint64_t)(uintptr_t)((struct
+                                          pthread_rwlock_timedwrlock_event *)
+                                             ctx->cp->payload)
+                ->lock;
+        default:
+            ASSERT(0);
+            return 0;
     }
-    return (uint64_t)(uintptr_t)ctx->args[0].value.ptr;
 }
 
 static inline void
 context_rwlock_try_set_ret(const context_t *ctx, int ret)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_RWLOCK_TRYRDLOCK:
-                ((struct pthread_rwlock_tryrdlock_event *)ctx->cp->payload)->ret =
-                    ret;
-                return;
-            case EVENT_RWLOCK_TRYWRLOCK:
-                ((struct pthread_rwlock_trywrlock_event *)ctx->cp->payload)->ret =
-                    ret;
-                return;
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (context_rwlock_event(ctx)) {
+        case CONTEXT_RWLOCK_TRYRDLOCK:
+            ((struct pthread_rwlock_tryrdlock_event *)ctx->cp->payload)->ret =
+                ret;
+            return;
+        case CONTEXT_RWLOCK_TRYWRLOCK:
+            ((struct pthread_rwlock_trywrlock_event *)ctx->cp->payload)->ret =
+                ret;
+            return;
+        default:
+            ASSERT(0);
+            return;
     }
-    arg_t *out = (arg_t *)&ctx->args[1];
-    out->value.u32 = (uint32_t)ret;
 }
 
 #endif

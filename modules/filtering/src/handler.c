@@ -175,7 +175,7 @@ _filtering_handle(const context_t *ctx, event_t *e)
     ASSERT(e);
 
     category_t cat = context_effective_category(ctx);
-    double p = _drop[cat];
+    double p       = _drop[cat];
     if (e->filter_less) {
         p = _drop_less[cat];
     }

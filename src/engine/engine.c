@@ -64,7 +64,7 @@ LOTTO_ADVERTISE_TYPE(EVENT_ENGINE__BEFORE_CAPTURE)
 
 CONTRACT(static void _check_plan(const context_t *ctx, plan_t p) {
     context_core_event_t core = context_core_event(ctx);
-    category_t cat = context_effective_category(ctx);
+    category_t cat            = context_effective_category(ctx);
     if (cat >= CAT_END_) {
         return;
     }
@@ -187,8 +187,8 @@ engine_capture(const context_t *ctx)
     })
 
     if (plan_next(p) == ACTION_CONTINUE)
-    log(ctx, "CONTINUE %s\t%s", category_str(context_effective_category(ctx)),
-        ctx->func);
+        log(ctx, "CONTINUE %s\t%s",
+            category_str(context_effective_category(ctx)), ctx->func);
 
     return p;
 }

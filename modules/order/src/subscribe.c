@@ -5,11 +5,11 @@
 
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include <lotto/engine/pubsub.h>
+#include <dice/self.h>
 #include <lotto/base/context.h>
+#include <lotto/engine/pubsub.h>
 #include <lotto/modules/order/events.h>
 #include <lotto/order.h>
 #include <lotto/runtime/capture_point.h>
@@ -60,41 +60,38 @@ lotto_order_cond(bool cond, uint64_t order)
 }
 
 PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_ORDER, {
-    order_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
-    capture_point cp = {.src_type = EVENT_ORDER, .payload = ev};
+    order_event_t *ev  = EVENT_PAYLOAD(event);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = ev->func);
+    capture_point cp   = {.src_type = EVENT_ORDER, .payload = ev};
     PS_PUBLISH(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, &cp,
                (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_ORDER, {
-    order_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
-    capture_point cp = {.src_type = EVENT_ORDER, .payload = ev};
+    order_event_t *ev  = EVENT_PAYLOAD(event);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = ev->func);
+    capture_point cp   = {.src_type = EVENT_ORDER, .payload = ev};
     PS_PUBLISH(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, &cp,
                (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_ORDER) {
         return PS_OK;
     }
 
-    order_event_t *ev = cp->payload;
-    (void)runtime_ingress_module_submit_before_auto_args(
-        origin, cp, arg(uint64_t, ev->order), (arg_t){0},
-        (arg_t){0}, (arg_t){0});
+    (void)runtime_ingress_module_submit_before_auto(origin, cp);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_ORDER) {
         return PS_OK;

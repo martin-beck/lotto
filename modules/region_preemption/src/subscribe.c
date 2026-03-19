@@ -1,11 +1,11 @@
+#include "state.h"
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include "state.h"
-#include <lotto/engine/pubsub.h>
+#include <dice/self.h>
 #include <lotto/base/context.h>
+#include <lotto/engine/pubsub.h>
 #include <lotto/modules/region_preemption/events.h>
 #include <lotto/region_preemption.h>
 #include <lotto/runtime/capture_point.h>
@@ -17,10 +17,9 @@ PS_ADVERTISE_TYPE(EVENT_REGION_PREEMPTION)
 static void
 _lotto_region_preemption_switch(bool in_region)
 {
-    context_t ctx                = *ctx(.self = self_md(), .func = __FUNCTION__);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = __FUNCTION__);
     region_preemption_event_t ev = {.in_region = in_region};
-    capture_point cp             = {.src_type = EVENT_REGION_PREEMPTION,
-                                    .payload  = &ev};
+    capture_point cp = {.src_type = EVENT_REGION_PREEMPTION, .payload = &ev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
 }
 
@@ -147,8 +146,8 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_REGION_PREEMPTION, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_REGION_PREEMPTION) {
         return PS_OK;

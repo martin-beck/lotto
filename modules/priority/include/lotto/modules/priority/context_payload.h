@@ -21,11 +21,9 @@ context_is_priority_event(const context_t *ctx)
 static inline int64_t
 context_priority_value(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_PRIORITY) &&
-        context_has_capture_point(ctx)) {
-        return ((priority_event_t *)ctx->cp->payload)->priority;
-    }
-    return (int64_t)ctx->args[0].value.u64;
+    ASSERT(context_has_event_type(ctx, EVENT_PRIORITY));
+    ASSERT(context_has_capture_point(ctx));
+    return ((priority_event_t *)ctx->cp->payload)->priority;
 }
 
 #endif

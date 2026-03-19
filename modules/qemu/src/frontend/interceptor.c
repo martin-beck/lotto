@@ -254,10 +254,12 @@ _intercept(context_t *ctx, const char *fname)
     if (fname)
         runtime_ingress(ctx);
     else {
-        if (ctx->args[0].value.u32 == REASON_SUCCESS) {
-            lotto_exit(ctx, ctx->args[0].value.u32);
+        ASSERT(ctx->cp && ctx->src_type == EVENT_QLOTTO_EXIT);
+        qlotto_exit_event_t *ev = ctx->cp->payload;
+        if (ev->reason == REASON_SUCCESS) {
+            lotto_exit(ctx, ev->reason);
         }
-        if (ctx->args[0].value.u32 == REASON_ASSERT_FAIL) {
+        if (ev->reason == REASON_ASSERT_FAIL) {
             kill(getpid(), SIGABRT);
             while (1)
                 ;
@@ -284,34 +286,70 @@ vcpu_mem_capture(unsigned int cpu_index, qemu_plugin_meminfo_t info,
         return;
     }
 
-    ctx.pstate = armcpu->pstate;
-
-    // All memory categories have the address of the target memory location
-    // and the pointer size as first two arguments
-    ctx.args[0].width     = ARG_PTR;
-    ctx.args[0].value.ptr = vaddr;
-
-    ctx.args[1].width     = ARG_U64;
-    ctx.args[1].value.u64 = sizeof(uint64_t);
-
-    // Memory accesses that modify the memory also carry the new value.
-    // TODO: replace dummy with actual value
-    if (ctx.cat == CAT_BEFORE_AWRITE) {
-        // arguments 1 for AWRITE
-        ctx.args[2].width     = ARG_U64;
-        ctx.args[2].value.u64 = 0;
+    ctx.pstate                         = armcpu->pstate;
+    capture_point cp                   = {.src_type = ctx.src_type};
+    struct ma_read_event read_ev       = {.pc   = (const void *)ctx.pc,
+                                          .func = ctx.func,
+                                          .addr = (void *)vaddr,
+                                          .size = sizeof(uint64_t)};
+    struct ma_write_event write_ev     = {.pc   = (const void *)ctx.pc,
+                                          .func = ctx.func,
+                                          .addr = (void *)vaddr,
+                                          .size = sizeof(uint64_t)};
+    struct ma_aread_event aread_ev     = {.pc   = (const void *)ctx.pc,
+                                          .func = ctx.func,
+                                          .addr = (void *)vaddr,
+                                          .size = sizeof(uint64_t)};
+    struct ma_awrite_event awrite_ev   = {.pc   = (const void *)ctx.pc,
+                                          .func = ctx.func,
+                                          .addr = (void *)vaddr,
+                                          .size = sizeof(uint64_t),
+                                          .val  = {.u64 = 0}};
+    struct ma_rmw_event rmw_ev         = {.pc   = (const void *)ctx.pc,
+                                          .func = ctx.func,
+                                          .addr = (void *)vaddr,
+                                          .size = sizeof(uint64_t),
+                                          .op   = RMW_OP_ADD,
+                                          .val  = {.u64 = 0}};
+    struct ma_xchg_event xchg_ev       = {.pc   = (const void *)ctx.pc,
+                                          .func = ctx.func,
+                                          .addr = (void *)vaddr,
+                                          .size = sizeof(uint64_t),
+                                          .val  = {.u64 = 0}};
+    struct ma_cmpxchg_event cmpxchg_ev = {.pc   = (const void *)ctx.pc,
+                                          .func = ctx.func,
+                                          .addr = (void *)vaddr,
+                                          .size = sizeof(uint64_t),
+                                          .cmp  = {.u64 = 0},
+                                          .val  = {.u64 = 1}};
+    switch (ctx.src_type) {
+        case EVENT_MA_READ:
+            cp.payload = &read_ev;
+            break;
+        case EVENT_MA_WRITE:
+            cp.payload = &write_ev;
+            break;
+        case EVENT_MA_AREAD:
+            cp.payload = &aread_ev;
+            break;
+        case EVENT_MA_AWRITE:
+            cp.payload = &awrite_ev;
+            break;
+        case EVENT_MA_RMW:
+            cp.payload = &rmw_ev;
+            break;
+        case EVENT_MA_XCHG:
+            cp.payload = &xchg_ev;
+            break;
+        case EVENT_MA_CMPXCHG:
+        case EVENT_MA_CMPXCHG_WEAK:
+            cp.payload = &cmpxchg_ev;
+            break;
+        default:
+            cp.payload = NULL;
+            break;
     }
-
-    if (ctx.cat == CAT_BEFORE_CMPXCHG) {
-        // arguments 1 and 2 for CMPXCHG
-        ctx.args[2].width = ARG_U64;
-        // TODO: replace dummy with actual value
-        ctx.args[2].value.u64 = 0;
-
-        ctx.args[3].width = ARG_U64;
-        // TODO: replace dummy with actual value
-        ctx.args[3].value.u64 = 1;
-    }
+    ctx.cp = &cp;
 
     _intercept(&ctx, __FUNCTION__);
     __perf_transition_qemu(tid, STATE_Q_PLUGIN, STATE_Q_GUEST, false);
@@ -333,11 +371,15 @@ vcpu_insn_capture(unsigned int cpu_index, void *udata)
     //       To avoid SEGFAULTs, we always set it here.
     ctx.func = __FUNCTION__;
 
-    if (ctx.cat == CAT_RSRC_ACQUIRING || ctx.cat == CAT_RSRC_RELEASED) {
-        ctx.args[0] = arg_ptr(armcpu->xregs[20]);
+    if (ctx.src_type == EVENT_RSRC_ACQUIRING ||
+        ctx.src_type == EVENT_RSRC_RELEASED) {
+        rsrc_event_t ev  = {.addr = (void *)armcpu->xregs[20]};
+        capture_point cp = {.src_type = ctx.src_type, .payload = &ev};
+        ctx.cp           = &cp;
+        _intercept(&ctx, __FUNCTION__);
+    } else {
+        _intercept(&ctx, __FUNCTION__);
     }
-
-    _intercept(&ctx, __FUNCTION__);
     __perf_transition_qemu(tid, STATE_Q_PLUGIN, STATE_Q_GUEST, false);
 }
 
@@ -375,26 +417,33 @@ vcpu_event_capture(unsigned int cpu_index, void *udata)
     eventi_t *event        = evctx->event;
     context_t *ctx         = evctx->ctx;
     CPUARMState *armcpu    = qlotto_get_armcpu(cpu_index);
+    rsrc_event_t rsrc_ev   = {0};
+    capture_point cp       = {0};
 
     _set_ctx_id(ctx, cpu_index);
 
-    if (ctx->cat == CAT_RSRC_ACQUIRING) {
+    if (ctx->src_type == EVENT_RSRC_ACQUIRING) {
         // ctx.func_addr = pc;
-
-        ctx->args[0] = arg_ptr(armcpu->xregs[0]);
+        rsrc_ev.addr = (void *)armcpu->xregs[0];
         if (event->ti.key == 0xffffffe0028a179c)
-            ctx->args[0] = arg_ptr(armcpu->xregs[0] + 0xbf4);
+            rsrc_ev.addr = (void *)(armcpu->xregs[0] + 0xbf4);
         if (event->ti.key == 0xffffffe0028dcfc0)
-            ctx->args[0] = arg_ptr(0xffffffe002a15ec0);
+            rsrc_ev.addr = (void *)0xffffffe002a15ec0;
+        cp      = (capture_point){.src_type = EVENT_RSRC_ACQUIRING,
+                                  .payload  = &rsrc_ev};
+        ctx->cp = &cp;
     }
 
-    if (ctx->cat == CAT_RSRC_RELEASED) {
+    if (ctx->src_type == EVENT_RSRC_RELEASED) {
         // ctx.func_addr = pc;
-        ctx->args[0] = arg_ptr(armcpu->xregs[0]);
+        rsrc_ev.addr = (void *)armcpu->xregs[0];
         if (event->ti.key == 0xffffffe0028a183c)
-            ctx->args[0] = arg_ptr(armcpu->xregs[0] + 0xbf4);
+            rsrc_ev.addr = (void *)(armcpu->xregs[0] + 0xbf4);
         if (event->ti.key == 0xffffffe0028dc768)
-            ctx->args[0] = arg_ptr(0xffffffe002a15ec0);
+            rsrc_ev.addr = (void *)0xffffffe002a15ec0;
+        cp      = (capture_point){.src_type = EVENT_RSRC_RELEASED,
+                                  .payload  = &rsrc_ev};
+        ctx->cp = &cp;
     }
 
     uint64_t old_pc = armcpu->pc;

@@ -18,7 +18,6 @@
     (&(context_t){.func = "UNKNOWN",                                           \
                   .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
-                  .args = {0},                                                 \
                   __VA_ARGS__})
 void sequencer_reset(void);
 

@@ -31,32 +31,48 @@ void
 udf_decode_reg(context_t *ctx, struct qemu_plugin_insn *insn)
 {
     uint32_t opcode = get_instruction_data(insn);
+    capture_point *cp;
+    qlotto_exit_event_t *exit_ev;
 
     ASSERT(0 == (opcode & UDF_MASK));
     switch (opcode) {
         case LOTTO_YIELD_A64_VAL:
-            ctx->cat = CAT_SYS_YIELD;
+            qlotto_context_set_semantics(ctx, CAT_SYS_YIELD);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_QEMUQUIT_A64_VAL:
         case LOTTO_TEST_SUCCESS_VAL:
-            ctx->cat               = CAT_NONE;
-            ctx->args[0].value.u32 = REASON_SUCCESS;
+            qlotto_context_set_semantics(ctx, CAT_NONE);
+            exit_ev         = sys_malloc(sizeof(*exit_ev));
+            cp              = sys_malloc(sizeof(*cp));
+            exit_ev->reason = REASON_SUCCESS;
+            *cp             = (capture_point){.src_type = EVENT_QLOTTO_EXIT,
+                                              .payload  = exit_ev};
+            ctx->type       = EVENT_QLOTTO_EXIT;
+            ctx->src_type   = EVENT_QLOTTO_EXIT;
+            ctx->cp         = cp;
             register_exit_cb(ctx, insn);
             break;
         case LOTTO_TEST_FAIL_VAL:
-            ctx->cat               = CAT_NONE;
-            ctx->args[0].value.u32 = REASON_ASSERT_FAIL;
+            qlotto_context_set_semantics(ctx, CAT_NONE);
+            exit_ev         = sys_malloc(sizeof(*exit_ev));
+            cp              = sys_malloc(sizeof(*cp));
+            exit_ev->reason = REASON_ASSERT_FAIL;
+            *cp             = (capture_point){.src_type = EVENT_QLOTTO_EXIT,
+                                              .payload  = exit_ev};
+            ctx->type       = EVENT_QLOTTO_EXIT;
+            ctx->src_type   = EVENT_QLOTTO_EXIT;
+            ctx->cp         = cp;
             register_exit_cb(ctx, insn);
             break;
 
         // Guest lock actions
         case LOTTO_LOCK_ACQ_A64_VAL:
-            ctx->cat = CAT_RSRC_ACQUIRING;
+            qlotto_context_set_semantics(ctx, CAT_RSRC_ACQUIRING);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_LOCK_REL_A64_VAL:
-            ctx->cat = CAT_RSRC_RELEASED;
+            qlotto_context_set_semantics(ctx, CAT_RSRC_RELEASED);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_LOCK_TRYACQ_A64_VAL:
@@ -66,11 +82,11 @@ udf_decode_reg(context_t *ctx, struct qemu_plugin_insn *insn)
 
         // Lotto Region
         case LOTTO_REGION_IN_VAL:
-            ctx->cat = CAT_REGION_IN;
+            qlotto_context_set_semantics(ctx, CAT_REGION_IN);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_REGION_OUT_VAL:
-            ctx->cat = CAT_REGION_OUT;
+            qlotto_context_set_semantics(ctx, CAT_REGION_OUT);
             register_insn_cb(ctx, insn);
             break;
 
@@ -79,11 +95,11 @@ udf_decode_reg(context_t *ctx, struct qemu_plugin_insn *insn)
             break;
 
         case LOTTO_TRACE_START_VAL:
-            ctx->cat = CAT_NONE;
+            qlotto_context_set_semantics(ctx, CAT_NONE);
             register_trace_start_cb(ctx, insn);
             break;
         case LOTTO_TRACE_END_VAL:
-            ctx->cat = CAT_NONE;
+            qlotto_context_set_semantics(ctx, CAT_NONE);
             register_trace_end_cb(ctx, insn);
             break;
 
@@ -114,7 +130,7 @@ loop_check(int32_t opcount, int32_t opnum, uint64_t pc, context_t *ctx,
         (insn_cs->detail->arm64.operands[opnum].imm - (int64_t)pc) / 4;
 
     if (b_insn_diff <= 0) {
-        ctx->cat  = CAT_SYS_YIELD;
+        qlotto_context_set_semantics(ctx, CAT_SYS_YIELD);
         ctx->func = "forced event by short backedge";
         if (INSTR_LOOP)
             register_loop_cb(ctx, insn);
@@ -125,7 +141,7 @@ void
 set_ctx_by_insn(context_t *ctx, cs_insn *insn_cs, struct qemu_plugin_insn *insn,
                 uint64_t pc)
 {
-    ctx->cat  = mapping_arm64[insn_cs->id];
+    qlotto_context_set_semantics(ctx, mapping_arm64[insn_cs->id]);
     ctx->func = mapping_cat[ctx->cat].func;
 
     if (mapping_cat[ctx->cat].cb != NULL) {
@@ -190,6 +206,7 @@ do_disasm_reg(struct qemu_plugin_insn *insn)
                   pc, 0, &insn_cs) == 1) {
         context_t *ctx;
         ctx     = (context_t *)sys_malloc(sizeof(context_t));
+        *ctx    = (context_t){0};
         ctx->pc = pc;
 
         // Set context depending on actual instruction
@@ -199,7 +216,8 @@ do_disasm_reg(struct qemu_plugin_insn *insn)
     event = qlotto_get_event(&_state.events, pc);
     if (event != NULL) {
         context_t *ctx = (context_t *)sys_malloc(sizeof(context_t));
-        ctx->cat       = event->cat;
+        *ctx           = (context_t){0};
+        qlotto_context_set_semantics(ctx, event->cat);
         // Inform Lotto about guest function name
         ctx->func = event->func_name;
         ctx->pc   = pc;

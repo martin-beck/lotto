@@ -13,11 +13,11 @@
 #include <lotto/util/macros.h>
 
 /* Lotto pubsub chains. */
-#define CHAIN_LOTTO_CONTROL 7
-#define CHAIN_LOTTO_DEFAULT 8
-#define CHAIN_INGRESS       9
-#define CHAIN_INGRESS_BEFORE 10
-#define CHAIN_INGRESS_AFTER 11
+#define CHAIN_LOTTO_CONTROL     7
+#define CHAIN_LOTTO_DEFAULT     8
+#define CHAIN_INGRESS           9
+#define CHAIN_INGRESS_BEFORE    10
+#define CHAIN_INGRESS_AFTER     11
 #define CHAIN_SEQUENCER_CAPTURE 12
 #define CHAIN_SEQUENCER_RESUME  13
 

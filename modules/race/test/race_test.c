@@ -1,7 +1,10 @@
+#include <dice/events/memaccess.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/race/race_result.h>
+#include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/ingress_events.h>
 #include <lotto/sys/ensure.h>
 #include <lotto/sys/string.h>
 race_t race_check(const context_t *ctx, clk_t clk);
@@ -42,11 +45,34 @@ typedef struct {
         .loc2 = (struct race_loc){.pc = (i2)},                                 \
     }
 
-#define actx(ID, ADDR, CAT, PC)                                                \
+#define ctx_read(ID, ADDR, PC)                                                 \
     (context_t)                                                                \
     {                                                                          \
-        .id = (ID), .pc = (PC), .cat = (CAT),                                  \
-        .args[0] = (arg_t){.width = ARG_PTR, .value.ptr = (ADDR)},             \
+        .id = (ID),                                                            \
+        .vid = NO_TASK,                                                        \
+        .pc = (PC),                                                            \
+        .phase = CONTEXT_PHASE_BEFORE,                                         \
+        .cat = CAT_BEFORE_READ,                                                \
+        .type = EVENT_BEFORE_READ, .src_type = EVENT_MA_READ,                  \
+        .cp = &(capture_point){                                                \
+            .src_type = EVENT_MA_READ,                                         \
+            .payload = &(struct ma_read_event){.addr = (void *)(ADDR),         \
+                                               .size = sizeof(uintptr_t)}},    \
+    }
+
+#define ctx_write(ID, ADDR, PC)                                                \
+    (context_t)                                                                \
+    {                                                                          \
+        .id = (ID),                                                            \
+        .vid = NO_TASK,                                                        \
+        .pc = (PC),                                                            \
+        .phase = CONTEXT_PHASE_BEFORE,                                         \
+        .cat = CAT_BEFORE_WRITE,                                               \
+        .type = EVENT_BEFORE_WRITE, .src_type = EVENT_MA_WRITE,                \
+        .cp = &(capture_point){                                                \
+            .src_type = EVENT_MA_WRITE,                                        \
+            .payload = &(struct ma_write_event){.addr = (void *)(ADDR),        \
+                                                .size = sizeof(uintptr_t)}},   \
     }
 
 #define NORACE race(0, 0, 0)
@@ -58,8 +84,8 @@ test_add()
     task_id t2 = 2;
 
     call_t calls[] = {
-        {actx(t1, CAT_BEFORE_READ, A1, I1), NORACE},
-        {actx(t2, CAT_BEFORE_WRITE, A1, I2), NORACE},
+        {ctx_read(t1, A1, I1), NORACE},
+        {ctx_write(t2, A2, I2), NORACE},
         END,
     };
 

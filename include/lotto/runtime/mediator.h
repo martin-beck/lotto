@@ -8,6 +8,7 @@
 #include <dice/types.h>
 #include <lotto/base/context.h>
 #include <lotto/base/plan.h>
+#include <lotto/runtime/ingress_capture.h>
 
 typedef enum mediator_optimization {
     MEDIATOR_OPTIMIZATION_NONE,
@@ -66,6 +67,7 @@ mediator_t *mediator_tls(metadata_t *md);
  * - false if capture point ignore, just continue execution
  */
 bool mediator_capture(mediator_t *m, context_t *ctx);
+bool mediator_capture_ingress(mediator_t *m, const ingress_capture *capture);
 
 /* first call by each task must be with CAT_NONE
  * mediation will be then reset when CAT_NONE is given.
@@ -74,9 +76,12 @@ bool mediator_capture(mediator_t *m, context_t *ctx);
  *
  */
 mediator_status_t mediator_resume(mediator_t *m, context_t *ctx);
+mediator_status_t mediator_resume_ingress(mediator_t *m,
+                                          const ingress_capture *capture);
 
 /* shall be called once task available again. */
 void mediator_return(mediator_t *m, context_t *ctx);
+void mediator_return_ingress(mediator_t *m, const ingress_capture *capture);
 
 void mediator_fini(mediator_t *m);
 

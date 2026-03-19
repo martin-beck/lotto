@@ -72,6 +72,45 @@ context_memaccess_category_from_event(context_memaccess_event_t event)
     }
 }
 
+static inline type_id
+context_memaccess_type_from_event(context_memaccess_event_t event)
+{
+    switch (event) {
+        case CONTEXT_MA_BEFORE_READ:
+            return EVENT_BEFORE_READ;
+        case CONTEXT_MA_BEFORE_WRITE:
+            return EVENT_BEFORE_WRITE;
+        case CONTEXT_MA_BEFORE_AREAD:
+            return EVENT_BEFORE_AREAD;
+        case CONTEXT_MA_BEFORE_AWRITE:
+            return EVENT_BEFORE_AWRITE;
+        case CONTEXT_MA_BEFORE_RMW:
+            return EVENT_BEFORE_RMW;
+        case CONTEXT_MA_BEFORE_XCHG:
+            return EVENT_BEFORE_XCHG;
+        case CONTEXT_MA_BEFORE_CMPXCHG:
+            return EVENT_BEFORE_CMPXCHG;
+        case CONTEXT_MA_BEFORE_FENCE:
+            return EVENT_BEFORE_FENCE;
+        case CONTEXT_MA_AFTER_AREAD:
+            return EVENT_AFTER_AREAD;
+        case CONTEXT_MA_AFTER_AWRITE:
+            return EVENT_AFTER_AWRITE;
+        case CONTEXT_MA_AFTER_RMW:
+            return EVENT_AFTER_RMW;
+        case CONTEXT_MA_AFTER_XCHG:
+            return EVENT_AFTER_XCHG;
+        case CONTEXT_MA_AFTER_CMPXCHG_S:
+            return EVENT_AFTER_CMPXCHG_S;
+        case CONTEXT_MA_AFTER_CMPXCHG_F:
+            return EVENT_AFTER_CMPXCHG_F;
+        case CONTEXT_MA_AFTER_FENCE:
+            return EVENT_AFTER_FENCE;
+        default:
+            return 0;
+    }
+}
+
 static inline bool
 _context_memaccess_equal(size_t size, uint64_t lhs, uint64_t rhs)
 {
@@ -92,6 +131,7 @@ _context_memaccess_equal(size_t size, uint64_t lhs, uint64_t rhs)
 
 static inline context_memaccess_event_t
 context_memaccess_event_from_source(type_id src_type, const void *payload,
+                                    context_phase_t phase,
                                     category_t phase_cat)
 {
     switch (src_type) {
@@ -100,29 +140,30 @@ context_memaccess_event_from_source(type_id src_type, const void *payload,
         case EVENT_MA_WRITE:
             return CONTEXT_MA_BEFORE_WRITE;
         case EVENT_MA_AREAD:
-            return phase_cat == CAT_AFTER_AREAD ? CONTEXT_MA_AFTER_AREAD :
+            return phase == CONTEXT_PHASE_AFTER ? CONTEXT_MA_AFTER_AREAD :
                                                   CONTEXT_MA_BEFORE_AREAD;
         case EVENT_MA_AWRITE:
-            return phase_cat == CAT_AFTER_AWRITE ? CONTEXT_MA_AFTER_AWRITE :
-                                                   CONTEXT_MA_BEFORE_AWRITE;
+            return phase == CONTEXT_PHASE_AFTER ? CONTEXT_MA_AFTER_AWRITE :
+                                                  CONTEXT_MA_BEFORE_AWRITE;
         case EVENT_MA_RMW:
-            return phase_cat == CAT_AFTER_RMW ? CONTEXT_MA_AFTER_RMW :
-                                                CONTEXT_MA_BEFORE_RMW;
+            return phase == CONTEXT_PHASE_AFTER ? CONTEXT_MA_AFTER_RMW :
+                                                  CONTEXT_MA_BEFORE_RMW;
         case EVENT_MA_XCHG:
-            return phase_cat == CAT_AFTER_XCHG ? CONTEXT_MA_AFTER_XCHG :
-                                                 CONTEXT_MA_BEFORE_XCHG;
+            return phase == CONTEXT_PHASE_AFTER ? CONTEXT_MA_AFTER_XCHG :
+                                                  CONTEXT_MA_BEFORE_XCHG;
         case EVENT_MA_CMPXCHG:
         case EVENT_MA_CMPXCHG_WEAK: {
             const struct ma_cmpxchg_event *ev = payload;
-            if (phase_cat == CAT_BEFORE_CMPXCHG) {
+            if (phase != CONTEXT_PHASE_AFTER) {
                 return CONTEXT_MA_BEFORE_CMPXCHG;
             }
-            return _context_memaccess_equal(ev->size, ev->old.u64, ev->val.u64) ?
+            return _context_memaccess_equal(ev->size, ev->old.u64,
+                                            ev->val.u64) ?
                        CONTEXT_MA_AFTER_CMPXCHG_S :
                        CONTEXT_MA_AFTER_CMPXCHG_F;
         }
         case EVENT_MA_FENCE:
-            return phase_cat == CAT_AFTER_FENCE ? CONTEXT_MA_AFTER_FENCE :
+            return phase == CONTEXT_PHASE_AFTER ? CONTEXT_MA_AFTER_FENCE :
                                                   CONTEXT_MA_BEFORE_FENCE;
         default:
             return CONTEXT_MA_NONE;
@@ -207,14 +248,28 @@ context_memaccess_event(const context_t *ctx)
         }
     }
     if (context_has_capture_point(ctx)) {
+        context_phase_t phase = ctx->phase;
         category_t phase_cat = context_memaccess_phase_category(ctx->type);
         if (phase_cat == CAT_NONE) {
-            phase_cat = ctx->cat;
+            phase_cat = context_compat_category(ctx);
+        }
+        if (phase == CONTEXT_PHASE_EVENT) {
+            phase = phase_cat == CAT_NONE || phase_cat == CAT_BEFORE_READ ||
+                            phase_cat == CAT_BEFORE_WRITE ||
+                            phase_cat == CAT_BEFORE_AREAD ||
+                            phase_cat == CAT_BEFORE_AWRITE ||
+                            phase_cat == CAT_BEFORE_RMW ||
+                            phase_cat == CAT_BEFORE_XCHG ||
+                            phase_cat == CAT_BEFORE_CMPXCHG ||
+                            phase_cat == CAT_BEFORE_FENCE ?
+                        CONTEXT_PHASE_BEFORE :
+                        CONTEXT_PHASE_AFTER;
         }
         return context_memaccess_event_from_source(context_event_type(ctx),
-                                                   ctx->cp->payload, phase_cat);
+                                                   ctx->cp->payload, phase,
+                                                   phase_cat);
     }
-    switch (ctx->cat) {
+    switch (context_compat_category(ctx)) {
         case CAT_BEFORE_READ:
             return CONTEXT_MA_BEFORE_READ;
         case CAT_BEFORE_WRITE:
@@ -277,111 +332,105 @@ context_memaccess_sized_arg(size_t size, uint64_t value)
 static inline uintptr_t
 context_memaccess_addr(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_MA_READ:
-                return (uintptr_t)((struct ma_read_event *)ctx->cp->payload)->addr;
-            case EVENT_MA_WRITE:
-                return (uintptr_t)((struct ma_write_event *)ctx->cp->payload)->addr;
-            case EVENT_MA_AREAD:
-                return (uintptr_t)((struct ma_aread_event *)ctx->cp->payload)->addr;
-            case EVENT_MA_AWRITE:
-                return (uintptr_t)((struct ma_awrite_event *)ctx->cp->payload)->addr;
-            case EVENT_MA_RMW:
-                return (uintptr_t)((struct ma_rmw_event *)ctx->cp->payload)->addr;
-            case EVENT_MA_XCHG:
-                return (uintptr_t)((struct ma_xchg_event *)ctx->cp->payload)->addr;
-            case EVENT_MA_CMPXCHG:
-            case EVENT_MA_CMPXCHG_WEAK:
-                return (uintptr_t)
-                    ((struct ma_cmpxchg_event *)ctx->cp->payload)->addr;
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (ctx->src_type) {
+        case EVENT_MA_READ:
+            return (uintptr_t)((struct ma_read_event *)ctx->cp->payload)->addr;
+        case EVENT_MA_WRITE:
+            return (uintptr_t)((struct ma_write_event *)ctx->cp->payload)->addr;
+        case EVENT_MA_AREAD:
+            return (uintptr_t)((struct ma_aread_event *)ctx->cp->payload)->addr;
+        case EVENT_MA_AWRITE:
+            return (uintptr_t)((struct ma_awrite_event *)ctx->cp->payload)
+                ->addr;
+        case EVENT_MA_RMW:
+            return (uintptr_t)((struct ma_rmw_event *)ctx->cp->payload)->addr;
+        case EVENT_MA_XCHG:
+            return (uintptr_t)((struct ma_xchg_event *)ctx->cp->payload)->addr;
+        case EVENT_MA_CMPXCHG:
+        case EVENT_MA_CMPXCHG_WEAK:
+            return (uintptr_t)((struct ma_cmpxchg_event *)ctx->cp->payload)
+                ->addr;
+        default:
+            ASSERT(0);
+            return 0;
     }
-    return (uintptr_t)ctx->args[0].value.ptr;
 }
 
 static inline size_t
 context_memaccess_size(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_MA_READ:
-                return ((struct ma_read_event *)ctx->cp->payload)->size;
-            case EVENT_MA_WRITE:
-                return ((struct ma_write_event *)ctx->cp->payload)->size;
-            case EVENT_MA_AREAD:
-                return ((struct ma_aread_event *)ctx->cp->payload)->size;
-            case EVENT_MA_AWRITE:
-                return ((struct ma_awrite_event *)ctx->cp->payload)->size;
-            case EVENT_MA_RMW:
-                return ((struct ma_rmw_event *)ctx->cp->payload)->size;
-            case EVENT_MA_XCHG:
-                return ((struct ma_xchg_event *)ctx->cp->payload)->size;
-            case EVENT_MA_CMPXCHG:
-            case EVENT_MA_CMPXCHG_WEAK:
-                return ((struct ma_cmpxchg_event *)ctx->cp->payload)->size;
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (ctx->src_type) {
+        case EVENT_MA_READ:
+            return ((struct ma_read_event *)ctx->cp->payload)->size;
+        case EVENT_MA_WRITE:
+            return ((struct ma_write_event *)ctx->cp->payload)->size;
+        case EVENT_MA_AREAD:
+            return ((struct ma_aread_event *)ctx->cp->payload)->size;
+        case EVENT_MA_AWRITE:
+            return ((struct ma_awrite_event *)ctx->cp->payload)->size;
+        case EVENT_MA_RMW:
+            return ((struct ma_rmw_event *)ctx->cp->payload)->size;
+        case EVENT_MA_XCHG:
+            return ((struct ma_xchg_event *)ctx->cp->payload)->size;
+        case EVENT_MA_CMPXCHG:
+        case EVENT_MA_CMPXCHG_WEAK:
+            return ((struct ma_cmpxchg_event *)ctx->cp->payload)->size;
+        default:
+            ASSERT(0);
+            return 0;
     }
-    return (size_t)ctx->args[1].value.u64;
 }
 
 static inline arg_t
 context_memaccess_value(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_MA_AWRITE:
-                return context_memaccess_sized_arg(
-                    ((struct ma_awrite_event *)ctx->cp->payload)->size,
-                    ((struct ma_awrite_event *)ctx->cp->payload)->val.u64);
-            case EVENT_MA_RMW:
-                return context_memaccess_sized_arg(
-                    ((struct ma_rmw_event *)ctx->cp->payload)->size,
-                    ((struct ma_rmw_event *)ctx->cp->payload)->val.u64);
-            case EVENT_MA_XCHG:
-                return context_memaccess_sized_arg(
-                    ((struct ma_xchg_event *)ctx->cp->payload)->size,
-                    ((struct ma_xchg_event *)ctx->cp->payload)->val.u64);
-            case EVENT_MA_CMPXCHG:
-            case EVENT_MA_CMPXCHG_WEAK:
-                return context_memaccess_sized_arg(
-                    ((struct ma_cmpxchg_event *)ctx->cp->payload)->size,
-                    ((struct ma_cmpxchg_event *)ctx->cp->payload)->val.u64);
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (ctx->src_type) {
+        case EVENT_MA_AWRITE:
+            return context_memaccess_sized_arg(
+                ((struct ma_awrite_event *)ctx->cp->payload)->size,
+                ((struct ma_awrite_event *)ctx->cp->payload)->val.u64);
+        case EVENT_MA_RMW:
+            return context_memaccess_sized_arg(
+                ((struct ma_rmw_event *)ctx->cp->payload)->size,
+                ((struct ma_rmw_event *)ctx->cp->payload)->val.u64);
+        case EVENT_MA_XCHG:
+            return context_memaccess_sized_arg(
+                ((struct ma_xchg_event *)ctx->cp->payload)->size,
+                ((struct ma_xchg_event *)ctx->cp->payload)->val.u64);
+        case EVENT_MA_CMPXCHG:
+        case EVENT_MA_CMPXCHG_WEAK:
+            return context_memaccess_sized_arg(
+                ((struct ma_cmpxchg_event *)ctx->cp->payload)->size,
+                ((struct ma_cmpxchg_event *)ctx->cp->payload)->val.u64);
+        default:
+            return (arg_t){0};
     }
-    return ctx->args[2];
 }
 
 static inline arg_t
 context_memaccess_cmp(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_MA_CMPXCHG:
-            case EVENT_MA_CMPXCHG_WEAK:
-                return context_memaccess_sized_arg(
-                    ((struct ma_cmpxchg_event *)ctx->cp->payload)->size,
-                    ((struct ma_cmpxchg_event *)ctx->cp->payload)->cmp.u64);
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (ctx->src_type) {
+        case EVENT_MA_CMPXCHG:
+        case EVENT_MA_CMPXCHG_WEAK:
+            return context_memaccess_sized_arg(
+                ((struct ma_cmpxchg_event *)ctx->cp->payload)->size,
+                ((struct ma_cmpxchg_event *)ctx->cp->payload)->cmp.u64);
+        default:
+            return (arg_t){0};
     }
-    return ctx->args[2];
 }
 
 static inline uint32_t
 context_memaccess_rmw_op(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx) && context_has_event_type(ctx, EVENT_MA_RMW)) {
-        return (uint32_t)((struct ma_rmw_event *)ctx->cp->payload)->op;
-    }
-    return ctx->args[3].value.u32;
+    ASSERT(context_has_capture_point(ctx));
+    ASSERT(ctx->src_type == EVENT_MA_RMW);
+    return (uint32_t)((struct ma_rmw_event *)ctx->cp->payload)->op;
 }
 
 #endif

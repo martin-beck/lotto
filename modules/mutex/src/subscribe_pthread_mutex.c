@@ -49,8 +49,7 @@ PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_MUTEX_TRYLOCK, {
 
 PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_MUTEX_UNLOCK, {
     struct pthread_mutex_unlock_event *ev = EVENT_PAYLOAD(event);
-    (void)_lotto_mutex_release_named("pthread_mutex_unlock", ev->mutex,
-                                     ev->pc);
+    (void)_lotto_mutex_release_named("pthread_mutex_unlock", ev->mutex, ev->pc);
     ev->func = (void *)pthread_nop_zero_;
     return PS_OK;
 })

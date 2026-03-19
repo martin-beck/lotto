@@ -7,6 +7,7 @@
 #include <lotto/check.h>
 #include <lotto/engine/catmgr.h>
 #include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_origin.h>
 #include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
@@ -22,8 +23,8 @@
 static bool _lotto_initialized = false;
 static void _intercept_return_resume(mediator_t *m, context_t *ctx);
 static void _intercept_resume(mediator_t *m, context_t *ctx);
-static context_t _bridge_ingress_event(const context_t *origin, type_id type,
-                                       const capture_point *cp);
+static void _assert_runtime_ingress_event(type_id type,
+                                          const capture_point *cp);
 
 bool
 _lotto_loaded(void)
@@ -56,6 +57,7 @@ interceptor_fini(const context_t *ctx)
 }
 
 #define MATCH_NAME(A, B) (strcmp(A, #B) == 0)
+
 static bool
 _is_task_create(const char *func, bool after)
 {
@@ -81,9 +83,7 @@ get_mediator(bool new_task)
     ASSERT((status == MEDIATOR_OK) && "mediator_init failed");
     if (!new_task) {
         /* take over task initialization */
-        ctx  = ctx(.func = __FUNCTION__);
-        *ctx = context_with_types(*ctx, EVENT_TASK_INIT, EVENT_TASK_INIT,
-                                  CAT_NONE);
+        *ctx = runtime_context_synthetic(__FUNCTION__, EVENT_TASK_INIT);
         ENSURE(!mediator_capture(m, ctx) &&
                "expected mediator_capture to return false");
         _intercept_resume(m, ctx);
@@ -149,11 +149,20 @@ runtime_ingress(context_t *ctx)
 }
 
 void
-runtime_ingress_event(const context_t *origin, type_id type,
+runtime_ingress_capture(const ingress_capture *capture)
+{
+    context_t ctx = runtime_context_from_ingress_capture(capture);
+    runtime_ingress(&ctx);
+}
+
+void
+runtime_ingress_event(const context_origin *origin, type_id type,
                       const capture_point *cp)
 {
-    context_t ctx = _bridge_ingress_event(origin, type, cp);
-    runtime_ingress(&ctx);
+    ingress_capture capture =
+        runtime_ingress_capture_base(origin, type, cp, CAT_NONE);
+    _assert_runtime_ingress_event(type, cp);
+    runtime_ingress_capture(&capture);
 }
 
 
@@ -174,11 +183,22 @@ runtime_ingress_before(context_t *ctx)
 }
 
 mediator_t *
-runtime_ingress_event_before(const context_t *origin, type_id type,
+runtime_ingress_capture_before(const ingress_capture *capture)
+{
+    ingress_capture local = *capture;
+    local.phase           = CONTEXT_PHASE_BEFORE;
+    context_t ctx = runtime_context_from_ingress_capture(&local);
+    return runtime_ingress_before(&ctx);
+}
+
+mediator_t *
+runtime_ingress_event_before(const context_origin *origin, type_id type,
                              const capture_point *cp)
 {
-    context_t ctx = _bridge_ingress_event(origin, type, cp);
-    return runtime_ingress_before(&ctx);
+    ingress_capture capture = runtime_ingress_capture_base_phase(
+        origin, type, cp, CONTEXT_PHASE_BEFORE, CAT_NONE);
+    _assert_runtime_ingress_event(type, cp);
+    return runtime_ingress_capture_before(&capture);
 }
 
 void
@@ -196,11 +216,22 @@ runtime_ingress_after(context_t *ctx)
 }
 
 void
-runtime_ingress_event_after(const context_t *origin, type_id type,
+runtime_ingress_capture_after(const ingress_capture *capture)
+{
+    ingress_capture local = *capture;
+    local.phase           = CONTEXT_PHASE_AFTER;
+    context_t ctx         = runtime_context_from_ingress_capture(&local);
+    runtime_ingress_after(&ctx);
+}
+
+void
+runtime_ingress_event_after(const context_origin *origin, type_id type,
                             const capture_point *cp)
 {
-    context_t ctx = _bridge_ingress_event(origin, type, cp);
-    runtime_ingress_after(&ctx);
+    ingress_capture capture = runtime_ingress_capture_base_phase(
+        origin, type, cp, CONTEXT_PHASE_AFTER, CAT_NONE);
+    _assert_runtime_ingress_event(type, cp);
+    runtime_ingress_capture_after(&capture);
 }
 
 void _lotto_enable_unregistered();
@@ -213,8 +244,8 @@ intercept_lookup_call(const char *func)
         return foo;
     }
 
-    context_t *ctx = ctx(.func = func);
-    *ctx           = context_with_types(*ctx, EVENT_CALL, EVENT_CALL, CAT_NONE);
+    context_t *ctx = ctx_empty;
+    *ctx           = runtime_context_synthetic(func, EVENT_CALL);
     (void)runtime_ingress_before(ctx);
 
     logger_debugf("[%lu] lookup call '%s'\n", ctx->id, func);
@@ -258,16 +289,10 @@ lotto_intercept_fini()
     }
 }
 
-static context_t
-_bridge_ingress_event(const context_t *origin, type_id type,
-                      const capture_point *cp)
+static void
+_assert_runtime_ingress_event(type_id type, const capture_point *cp)
 {
-    ASSERT(origin != NULL);
     ASSERT(cp != NULL);
-
-    context_t ctx = *origin;
-    ctx.cp        = (capture_point *)cp;
-    ctx           = context_with_types(ctx, type, cp->src_type, CAT_NONE);
 
     switch (type) {
         case EVENT_KEY_CREATE:
@@ -284,6 +309,8 @@ _bridge_ingress_event(const context_t *origin, type_id type,
             break;
         case EVENT_CALL:
             break;
+        case EVENT_TASK_BLOCK:
+            break;
         case EVENT_TASK_DETACH:
             ASSERT(cp->task_detach != NULL);
             break;
@@ -297,6 +324,4 @@ _bridge_ingress_event(const context_t *origin, type_id type,
             logger_fatalf("unexpected ingress event type: %u\n", type);
             break;
     }
-
-    return ctx;
 }

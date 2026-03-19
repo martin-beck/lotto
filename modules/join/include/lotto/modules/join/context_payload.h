@@ -21,12 +21,12 @@ static inline context_join_event_t
 context_join_event(const context_t *ctx)
 {
     switch (context_event_type(ctx)) {
-        case EVENT_JOIN:
+        case EVENT_TASK_JOIN:
             return CONTEXT_JOIN_JOIN;
         default:
             break;
     }
-    switch (ctx->cat) {
+    switch (context_compat_category(ctx)) {
         case CAT_JOIN:
             return CONTEXT_JOIN_JOIN;
         case CAT_EXIT:
@@ -39,67 +39,57 @@ context_join_event(const context_t *ctx)
 static inline uintptr_t
 context_join_thread(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_JOIN:
-                return ((join_event_t *)ctx->cp->payload)->thread;
-            case EVENT_TASK_INIT:
-                return context_task_init_thread(ctx);
-            case EVENT_TASK_DETACH:
-                return context_task_detach_thread(ctx);
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (context_event_type(ctx)) {
+        case EVENT_TASK_JOIN:
+            return ((join_event_t *)ctx->cp->payload)->thread;
+        case EVENT_TASK_INIT:
+            return context_task_init_thread(ctx);
+        case EVENT_TASK_DETACH:
+            return context_task_detach_thread(ctx);
+        default:
+            ASSERT(0);
+            return 0;
     }
-    return (uintptr_t)ctx->args[0].value.u64;
 }
 
 static inline bool
 context_join_detached(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_INIT) &&
-        context_has_capture_point(ctx)) {
-        return context_task_init_detached(ctx);
-    }
-    return ctx->args[1].value.u8;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_INIT));
+    ASSERT(context_has_capture_point(ctx));
+    return context_task_init_detached(ctx);
 }
 
 static inline void **
 context_join_value_ptr(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_JOIN) && context_has_capture_point(ctx)) {
-        return ((join_event_t *)ctx->cp->payload)->ptr;
-    }
-    return (void **)ctx->args[1].value.ptr;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_JOIN));
+    ASSERT(context_has_capture_point(ctx));
+    return ((join_event_t *)ctx->cp->payload)->ptr;
 }
 
 static inline int *
 context_join_ret(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_JOIN:
-                return ((join_event_t *)ctx->cp->payload)->ret;
-            case EVENT_TASK_DETACH:
-                return context_task_detach_ret(ctx);
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (context_event_type(ctx)) {
+        case EVENT_TASK_JOIN:
+            return ((join_event_t *)ctx->cp->payload)->ret;
+        case EVENT_TASK_DETACH:
+            return context_task_detach_ret(ctx);
+        default:
+            ASSERT(0);
+            return NULL;
     }
-    if (context_is_task_detach(ctx)) {
-        return (int *)ctx->args[1].value.ptr;
-    }
-    return (int *)ctx->args[2].value.ptr;
 }
 
 static inline void *
 context_join_exit_value(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_FINI) &&
-        context_has_capture_point(ctx)) {
-        return context_task_fini_value(ctx);
-    }
-    return (void *)ctx->args[0].value.ptr;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_FINI));
+    ASSERT(context_has_capture_point(ctx));
+    return context_task_fini_value(ctx);
 }
 
 #endif

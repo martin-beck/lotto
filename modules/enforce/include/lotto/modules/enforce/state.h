@@ -57,6 +57,7 @@ typedef struct enforce_config {
 typedef struct enforce_state {
     marshable_t m;
     context_t ctx;
+    uintptr_t addr;
     arg_t val;
     clk_t clk;
     stable_address_t pc;

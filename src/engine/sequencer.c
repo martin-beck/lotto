@@ -159,7 +159,8 @@ sequencer_capture(const context_t *ctx)
 
     switch (ry.status) {
         case REPLAY_LOAD:
-            ASSERT(next == ANY_TASK || next == ry.id || context_is_blocking(ctx));
+            ASSERT(next == ANY_TASK || next == ry.id ||
+                   context_is_blocking(ctx));
             next = ry.id;
             break;
         case REPLAY_FORCE:
@@ -199,10 +200,10 @@ sequencer_capture(const context_t *ctx)
     /* track decision for resume */
     _seq.should_record =
         e.should_record || _granularity_should_record(ctx, &e, &p);
-    _seq.next_task = next;
-    _seq.prev_cat  = cat;
-    _seq.prev_core = context_core_event(ctx);
-    _seq.prev_type = ctx->type;
+    _seq.next_task     = next;
+    _seq.prev_cat      = cat;
+    _seq.prev_core     = context_core_event(ctx);
+    _seq.prev_type     = ctx->type;
     _seq.prev_src_type = ctx->src_type;
 
     /* event counting */
@@ -240,11 +241,13 @@ sequencer_resume(const context_t *ctx)
 
     if (_seq.should_record ||
         (sequencer_config()->slack > 0 &&
-         (_seq.prev_core == CONTEXT_CORE_CALL || _seq.prev_cat == CAT_TASK_BLOCK) &&
+         (_seq.prev_core == CONTEXT_CORE_CALL ||
+          _seq.prev_cat == CAT_TASK_BLOCK) &&
          ctx->id != _seq.prev_task) ||
         (_seq.prev_core != CONTEXT_CORE_TASK_CREATE &&
          (sequencer_config()->slack == 0 ||
-          !(_seq.prev_core == CONTEXT_CORE_CALL || _seq.prev_cat == CAT_TASK_BLOCK)) &&
+          !(_seq.prev_core == CONTEXT_CORE_CALL ||
+            _seq.prev_cat == CAT_TASK_BLOCK)) &&
          _seq.next_task != ctx->id)) {
         recorder_record(ctx, _seq.clk);
     }

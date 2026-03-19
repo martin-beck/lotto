@@ -10,9 +10,9 @@
 #include <stdint.h>
 
 #include <lotto/base/context.h>
-#include <lotto/runtime/memaccess_payload.h>
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress_events.h>
+#include <lotto/runtime/memaccess_payload.h>
 #include <lotto/runtime/module_event_category.h>
 
 typedef enum context_core_event {
@@ -58,7 +58,7 @@ context_core_event(const context_t *ctx)
         }
     }
 
-    switch (ctx->cat) {
+    switch (context_compat_category(ctx)) {
         case CAT_TASK_CREATE:
             return CONTEXT_CORE_TASK_CREATE;
         case CAT_CALL:
@@ -88,6 +88,8 @@ context_core_category(type_id type)
             return CAT_TASK_CREATE;
         case EVENT_CALL:
             return CAT_CALL;
+        case EVENT_TASK_BLOCK:
+            return CAT_TASK_BLOCK;
         case EVENT_TASK_INIT:
             return CAT_TASK_INIT;
         case EVENT_TASK_FINI:
@@ -149,13 +151,8 @@ context_semantic_category(type_id type)
 }
 
 static inline category_t
-context_effective_category(const context_t *ctx)
+context_event_category(type_id type)
 {
-    if (ctx == NULL) {
-        return CAT_NONE;
-    }
-
-    type_id type   = context_event_type(ctx);
     category_t cat = context_core_category(type);
     if (cat != CAT_NONE) {
         return cat;
@@ -166,17 +163,28 @@ context_effective_category(const context_t *ctx)
         return cat;
     }
 
+    return context_module_category(type);
+}
+
+static inline category_t
+context_effective_category(const context_t *ctx)
+{
+    if (ctx == NULL) {
+        return CAT_NONE;
+    }
+
+    type_id type   = context_event_type(ctx);
+    category_t cat = context_event_category(type);
+    if (cat != CAT_NONE) {
+        return cat;
+    }
+
     cat = context_memaccess_category(ctx);
     if (cat != CAT_NONE) {
         return cat;
     }
 
-    cat = context_module_category(type);
-    if (cat != CAT_NONE) {
-        return cat;
-    }
-
-    return ctx->cat;
+    return context_compat_category(ctx);
 }
 
 static inline context_t
@@ -184,13 +192,7 @@ context_finalize_category(context_t ctx, category_t fallback_cat)
 {
     if (ctx.cat == CAT_NONE) {
         type_id type   = ctx.type != 0 ? ctx.type : ctx.src_type;
-        category_t cat = context_core_category(type);
-        if (cat == CAT_NONE) {
-            cat = context_semantic_category(type);
-        }
-        if (cat == CAT_NONE) {
-            cat = context_module_category(type);
-        }
+        category_t cat = context_event_category(type);
         ctx.cat = cat != CAT_NONE ? cat : fallback_cat;
     }
     return ctx;
@@ -248,21 +250,17 @@ context_has_slack(const context_t *ctx)
 static inline uintptr_t
 context_task_init_thread(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_INIT) &&
-        context_has_capture_point(ctx)) {
-        return ctx->cp->task_init->thread;
-    }
-    return (uintptr_t)ctx->args[0].value.u64;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_INIT));
+    ASSERT(context_has_capture_point(ctx));
+    return ctx->cp->task_init->thread;
 }
 
 static inline bool
 context_task_init_detached(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_INIT) &&
-        context_has_capture_point(ctx)) {
-        return ctx->cp->task_init->detached;
-    }
-    return ctx->args[1].value.u8;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_INIT));
+    ASSERT(context_has_capture_point(ctx));
+    return ctx->cp->task_init->detached;
 }
 
 static inline bool
@@ -274,11 +272,9 @@ context_is_task_init(const context_t *ctx)
 static inline void *
 context_task_fini_value(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_FINI) &&
-        context_has_capture_point(ctx)) {
-        return ctx->cp->task_fini->ptr;
-    }
-    return (void *)ctx->args[0].value.ptr;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_FINI));
+    ASSERT(context_has_capture_point(ctx));
+    return ctx->cp->task_fini->ptr;
 }
 
 static inline bool
@@ -290,11 +286,9 @@ context_is_task_fini(const context_t *ctx)
 static inline uintptr_t
 context_task_detach_thread(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_DETACH) &&
-        context_has_capture_point(ctx)) {
-        return ctx->cp->task_detach->thread;
-    }
-    return (uintptr_t)ctx->args[0].value.u64;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_DETACH));
+    ASSERT(context_has_capture_point(ctx));
+    return ctx->cp->task_detach->thread;
 }
 
 static inline bool
@@ -306,11 +300,9 @@ context_is_task_detach(const context_t *ctx)
 static inline int *
 context_task_detach_ret(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_DETACH) &&
-        context_has_capture_point(ctx)) {
-        return ctx->cp->task_detach->ret;
-    }
-    return (int *)ctx->args[1].value.ptr;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_DETACH));
+    ASSERT(context_has_capture_point(ctx));
+    return ctx->cp->task_detach->ret;
 }
 
 static inline bool
@@ -334,36 +326,33 @@ context_is_set_specific(const context_t *ctx)
 static inline pthread_key_t
 context_key_value(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_KEY_CREATE:
-                return *ctx->cp->key_create->key;
-            case EVENT_KEY_DELETE:
-                return ctx->cp->key_delete->key;
-            case EVENT_SET_SPECIFIC:
-                return ctx->cp->set_specific->key;
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (context_event_type(ctx)) {
+        case EVENT_KEY_CREATE:
+            return *ctx->cp->key_create->key;
+        case EVENT_KEY_DELETE:
+            return ctx->cp->key_delete->key;
+        case EVENT_SET_SPECIFIC:
+            return ctx->cp->set_specific->key;
+        default:
+            ASSERT(0);
+            return 0;
     }
-    return *(pthread_key_t *)ctx->args[0].value.ptr;
 }
 
 static inline void (*context_key_destructor(const context_t *ctx))(void *)
 {
-    if (context_is_key_create(ctx) && context_has_capture_point(ctx)) {
-        return ctx->cp->key_create->destructor;
-    }
-    return (void (*)(void *))ctx->args[1].value.ptr;
+    ASSERT(context_is_key_create(ctx));
+    ASSERT(context_has_capture_point(ctx));
+    return ctx->cp->key_create->destructor;
 }
 
 static inline void *
 context_set_specific_value(const context_t *ctx)
 {
-    if (context_is_set_specific(ctx) && context_has_capture_point(ctx)) {
-        return (void *)ctx->cp->set_specific->value;
-    }
-    return (void *)ctx->args[1].value.ptr;
+    ASSERT(context_is_set_specific(ctx));
+    ASSERT(context_has_capture_point(ctx));
+    return (void *)ctx->cp->set_specific->value;
 }
 
 #endif

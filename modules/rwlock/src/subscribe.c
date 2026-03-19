@@ -22,10 +22,10 @@
 #include <lotto/runtime/ingress_events.h>
 #include <lotto/sys/logger.h>
 
-#define PUBLISH_RWLOCK_INGRESS(CHAIN, SRC_TYPE, PAYLOAD, PC, FUNC)            \
+#define PUBLISH_RWLOCK_INGRESS(CHAIN, SRC_TYPE, PAYLOAD, PC, FUNC)             \
     do {                                                                       \
-        context_t ctx = *ctx_pc(.self = md, .pc = (uintptr_t)(PC),             \
-                                 .func = (FUNC));                              \
+        context_origin ctx =                                                   \
+            *ctx_origin_pc(.self = md, .pc = (uintptr_t)(PC), .func = (FUNC)); \
         capture_point cp = {.src_type = (SRC_TYPE), .payload = (PAYLOAD)};     \
         PS_PUBLISH((CHAIN), EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);  \
     } while (0)
@@ -106,8 +106,8 @@ PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_RWLOCK_TIMEDWRLOCK, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
     switch (cp->src_type) {
         case EVENT_RWLOCK_RDLOCK: {
             runtime_ingress_module_submit_auto(origin, cp);
@@ -135,8 +135,8 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
     switch (cp->src_type) {
         case EVENT_RWLOCK_TRYRDLOCK:
             runtime_ingress_module_submit_auto(origin, cp);

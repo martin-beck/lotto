@@ -1,10 +1,10 @@
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include <lotto/engine/pubsub.h>
+#include <dice/self.h>
 #include <lotto/base/category.h>
+#include <lotto/engine/pubsub.h>
 #include <lotto/modules/deadlock/events.h>
 #include <lotto/rsrc_deadlock.h>
 #include <lotto/runtime/capture_point.h>
@@ -31,18 +31,18 @@ intercept_rsrc_released(void *addr)
 void
 _lotto_rsrc_acquiring(void *addr)
 {
-    context_t ctx  = *ctx(.self = self_md(), .func = __FUNCTION__);
-    rsrc_event_t ev = {.addr = addr};
-    capture_point cp = {.src_type = EVENT_RSRC_ACQUIRING, .payload = &ev};
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = __FUNCTION__);
+    rsrc_event_t ev    = {.addr = addr};
+    capture_point cp   = {.src_type = EVENT_RSRC_ACQUIRING, .payload = &ev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
 }
 
 void
 _lotto_rsrc_released(void *addr)
 {
-    context_t ctx  = *ctx(.self = self_md(), .func = __FUNCTION__);
-    rsrc_event_t ev = {.addr = addr};
-    capture_point cp = {.src_type = EVENT_RSRC_RELEASED, .payload = &ev};
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = __FUNCTION__);
+    rsrc_event_t ev    = {.addr = addr};
+    capture_point cp   = {.src_type = EVENT_RSRC_RELEASED, .payload = &ev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
 }
 
@@ -59,8 +59,8 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_RSRC_RELEASED, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     switch (cp->src_type) {
         case EVENT_RSRC_ACQUIRING:

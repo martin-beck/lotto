@@ -1,19 +1,15 @@
 
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
+#include <dice/self.h>
 #include <lotto/await_while.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/modules/rusty/events.h>
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
-
-typedef struct {
-    uint32_t cond;
-} spin_end_event_t;
 
 PS_ADVERTISE_TYPE(EVENT_SPIN_START)
 PS_ADVERTISE_TYPE(EVENT_SPIN_END)
@@ -35,17 +31,17 @@ intercept_spin_end(uint32_t cond)
 void
 _lotto_spin_start()
 {
-    context_t ctx    = *ctx(.self = self_md(), .func = __FUNCTION__);
-    capture_point cp = {.src_type = EVENT_SPIN_START, .payload = NULL};
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = __FUNCTION__);
+    capture_point cp   = {.src_type = EVENT_SPIN_START, .payload = NULL};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
 }
 
 void
 _lotto_spin_end(uint32_t cond)
 {
-    context_t ctx        = *ctx(.self = self_md(), .func = __FUNCTION__);
-    spin_end_event_t ev  = {.cond = cond};
-    capture_point cp     = {.src_type = EVENT_SPIN_END, .payload = &ev};
+    context_origin ctx  = *ctx_origin(.self = self_md(), .func = __FUNCTION__);
+    spin_end_event_t ev = {.cond = cond};
+    capture_point cp    = {.src_type = EVENT_SPIN_END, .payload = &ev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
 }
 
@@ -62,20 +58,16 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_SPIN_END, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     switch (cp->src_type) {
         case EVENT_SPIN_START:
             runtime_ingress_module_submit_event(origin, cp, EVENT_SPIN_START);
             break;
-        case EVENT_SPIN_END: {
-            spin_end_event_t *ev = cp->payload;
-            runtime_ingress_module_submit_event_args(
-                origin, cp, EVENT_SPIN_END, arg(uint32_t, ev->cond),
-                (arg_t){0}, (arg_t){0}, (arg_t){0});
+        case EVENT_SPIN_END:
+            runtime_ingress_module_submit_event(origin, cp, EVENT_SPIN_END);
             break;
-        }
         default:
             break;
     }

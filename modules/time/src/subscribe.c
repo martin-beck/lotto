@@ -1,12 +1,13 @@
 #include <alloca.h>
-#include <dice/chains/capture.h>
-#include <dice/chains/intercept.h>
-#include <dice/self.h>
-#include <dice/module.h>
-#include <dice/pubsub.h>
 #include <poll.h>
 #include <signal.h>
 #include <time.h>
+
+#include <dice/chains/capture.h>
+#include <dice/chains/intercept.h>
+#include <dice/module.h>
+#include <dice/pubsub.h>
+#include <dice/self.h>
 
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include <lotto/base/callrec.h>
@@ -197,15 +198,15 @@ sleep(unsigned int seconds)
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_TIME_YIELD, {
     time_yield_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
-    capture_point cp = {.src_type = EVENT_TIME_YIELD, .payload = ev};
+    context_origin ctx     = *ctx_origin(.self = self_md(), .func = ev->func);
+    capture_point cp       = {.src_type = EVENT_TIME_YIELD, .payload = ev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_TIME_YIELD) {
         return PS_OK;

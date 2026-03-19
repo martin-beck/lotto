@@ -1,11 +1,11 @@
 #include <errno.h>
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "state.h"
-#include <lotto/modules/rwlock/context_payload.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/modules/rwlock/context_payload.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/ensure.h>
 #include <lotto/sys/logger_block.h>
@@ -54,17 +54,16 @@ _rwlock_handle(const context_t *ctx, event_t *e)
 
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
-    uint64_t addr = context_rwlock_addr(ctx);
     switch (context_rwlock_event(ctx)) {
         case CONTEXT_RWLOCK_RDLOCK:
-            _handle_rdlock(ctx->id, addr, e);
+            _handle_rdlock(ctx->id, context_rwlock_addr(ctx), e);
             e->is_chpt = true;
             ASSERT(!e->any_task_filter);
             e->any_task_filter = _should_wait;
             break;
 
         case CONTEXT_RWLOCK_WRLOCK:
-            _handle_wrlock(ctx->id, addr, e);
+            _handle_wrlock(ctx->id, context_rwlock_addr(ctx), e);
             e->is_chpt = true;
             ASSERT(!e->any_task_filter);
             e->any_task_filter = _should_wait;
@@ -98,22 +97,23 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 
-    uint64_t addr = context_rwlock_addr(ctx);
     switch (context_rwlock_event(ctx)) {
         case CONTEXT_RWLOCK_RDLOCK:
-            _posthandle_rdlock(ctx->id, addr);
+            _posthandle_rdlock(ctx->id, context_rwlock_addr(ctx));
             break;
         case CONTEXT_RWLOCK_WRLOCK:
-            _posthandle_wrlock(ctx->id, addr);
+            _posthandle_wrlock(ctx->id, context_rwlock_addr(ctx));
             break;
         case CONTEXT_RWLOCK_UNLOCK:
-            _posthandle_unlock(ctx->id, addr);
+            _posthandle_unlock(ctx->id, context_rwlock_addr(ctx));
             break;
         case CONTEXT_RWLOCK_TRYRDLOCK:
-            context_rwlock_try_set_ret(ctx, _posthandle_tryrdlock(ctx->id, addr));
+            context_rwlock_try_set_ret(
+                ctx, _posthandle_tryrdlock(ctx->id, context_rwlock_addr(ctx)));
             break;
         case CONTEXT_RWLOCK_TRYWRLOCK:
-            context_rwlock_try_set_ret(ctx, _posthandle_trywrlock(ctx->id, addr));
+            context_rwlock_try_set_ret(
+                ctx, _posthandle_trywrlock(ctx->id, context_rwlock_addr(ctx)));
             break;
         default:
             break;

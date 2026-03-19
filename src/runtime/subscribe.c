@@ -18,8 +18,9 @@
 #include <lotto/base/category.h>
 #include <lotto/base/context.h>
 #include <lotto/engine/pubsub.h>
-#include <lotto/runtime/events.h>
 #include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_origin.h>
+#include <lotto/runtime/events.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
 #include <lotto/sys/logger.h>
@@ -50,7 +51,8 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_SELF_INIT, {
     if (self_id(md) != MAIN_THREAD)
         return PS_OK;
     bool detached = false;
-    context_t ctx              = *ctx(.self = md, .func = "pthread_thread_start");
+    context_origin ctx =
+        *ctx_origin(.self = md, .func = "pthread_thread_start");
     capture_task_init_event ev = {
         .thread   = (uintptr_t)pthread_self(),
         .detached = detached,
@@ -62,7 +64,8 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_SELF_INIT, {
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_THREAD_START, {
     bool detached = false;
-    context_t ctx              = *ctx(.self = md, .func = "pthread_thread_start");
+    context_origin ctx =
+        *ctx_origin(.self = md, .func = "pthread_thread_start");
     capture_task_init_event ev = {
         .thread   = (uintptr_t)pthread_self(),
         .detached = detached,
@@ -74,9 +77,9 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_THREAD_START, {
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_THREAD_EXIT, {
     struct pthread_exit_event *ev = EVENT_PAYLOAD(event);
-    context_t ctx              = *ctx(.self = md, .func = "pthread_exit");
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_exit");
     capture_task_fini_event fev = {.ptr = ev != NULL ? ev->ptr : NULL};
-    capture_point cp          = {.src_type = EVENT_TASK_FINI, .task_fini = &fev};
+    capture_point cp = {.src_type = EVENT_TASK_FINI, .task_fini = &fev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_TASK_FINI, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
@@ -87,7 +90,7 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_THREAD_EXIT, {
 
 PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_THREAD_CREATE, {
     struct pthread_create_event *ev = EVENT_PAYLOAD(event);
-    context_t ctx               = *ctx(.self = md, .func = "pthread_create");
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_create");
     capture_task_create_event cev = {
         .thread = ev->thread,
         .attr   = ev->attr,
@@ -100,20 +103,20 @@ PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_THREAD_CREATE, {
 })
 
 PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_THREAD_CREATE, {
-    context_t ctx    = *ctx(.self = md, .func = "pthread_create");
-    capture_point cp = {.src_type = EVENT_TASK_CREATE, .payload = NULL};
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_create");
+    capture_point cp   = {.src_type = EVENT_TASK_CREATE, .payload = NULL};
     PS_PUBLISH(CHAIN_INGRESS_AFTER, EVENT_TASK_CREATE, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_THREAD_JOIN, {
-    context_t ctx    = *ctx(.self = md, .func = "pthread_join");
-    capture_point cp = {.src_type = EVENT_CALL, .payload = NULL};
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_join");
+    capture_point cp   = {.src_type = EVENT_CALL, .payload = NULL};
     PS_PUBLISH(CHAIN_INGRESS_BEFORE, EVENT_CALL, &cp, (metadata_t *)&ctx);
 })
 PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_THREAD_JOIN, {
-    context_t ctx    = *ctx(.self = md, .func = "pthread_join");
-    capture_point cp = {.src_type = EVENT_CALL, .payload = NULL};
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_join");
+    capture_point cp   = {.src_type = EVENT_CALL, .payload = NULL};
     PS_PUBLISH(CHAIN_INGRESS_AFTER, EVENT_CALL, &cp, (metadata_t *)&ctx);
     return PS_OK;
 })
@@ -130,9 +133,9 @@ LOTTO_ADVERTISE_TYPE(EVENT_PTHREAD_DETACH)
 PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_PTHREAD_DETACH, {
     struct pthread_detach_event *ev = EVENT_PAYLOAD(event);
 
-    int ret = EINTR;
-    context_t ctx           = *ctx_pc(.self = md, .pc = (uintptr_t)ev->pc,
-                                      .func = __FUNCTION__);
+    int ret            = EINTR;
+    context_origin ctx = *ctx_origin_pc(.self = md, .pc = (uintptr_t)ev->pc,
+                                        .func = __FUNCTION__);
     capture_task_detach_event dev = {
         .thread = ev->thread,
         .ret    = &ret,

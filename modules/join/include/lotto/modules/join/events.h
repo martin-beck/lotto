@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#define EVENT_JOIN 176
+#define EVENT_TASK_JOIN 176
 
 typedef struct join_event {
     uintptr_t thread;

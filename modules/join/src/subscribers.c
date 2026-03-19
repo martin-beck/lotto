@@ -33,14 +33,14 @@ PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_THREAD_JOIN, {
     struct pthread_join_event *ev = EVENT_PAYLOAD(event);
     if (self_retired(md))
         return PS_STOP_CHAIN;
-    ev->ret      = EINTR;
-    context_t ctx = *ctx(.self = md, .func = "pthread_join");
-    join_event_t jev = {
-        .thread = ev->thread,
-        .ptr    = ev->ptr,
-        .ret    = &ev->ret,
+    ev->ret            = EINTR;
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_join");
+    join_event_t jev   = {
+          .thread = ev->thread,
+          .ptr    = ev->ptr,
+          .ret    = &ev->ret,
     };
-    capture_point cp = {.src_type = EVENT_JOIN, .payload = &jev};
+    capture_point cp = {.src_type = EVENT_TASK_JOIN, .payload = &jev};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
     switch (ev->ret) {
         CASE_PTHREAD_JOIN_RET(EDEADLK);
@@ -61,10 +61,10 @@ PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_THREAD_JOIN, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
-    if (cp->src_type != EVENT_JOIN) {
+    if (cp->src_type != EVENT_TASK_JOIN) {
         return PS_OK;
     }
 

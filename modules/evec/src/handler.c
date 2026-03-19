@@ -274,18 +274,18 @@ _evec_handle(const context_t *ctx, event_t *e)
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
 
-    uint64_t eid   = context_evec_id(ctx);
     bool may_block = false;
     clock_time(&_state.now);
     _state.received_timeout = false;
     _check_timeouts(true);
     switch (context_evec_event(ctx)) {
         case CONTEXT_EVEC_WAIT:
-            _handle_wait(ctx->id, eid);
+            _handle_wait(ctx->id, context_evec_id(ctx));
             may_block = e->is_chpt = true;
             break;
         case CONTEXT_EVEC_TIMED_WAIT:
-            _handle_timed_wait(ctx->id, eid, context_evec_abstime(ctx),
+            _handle_timed_wait(ctx->id, context_evec_id(ctx),
+                               context_evec_abstime(ctx),
                                context_evec_timed_wait_ret(ctx));
             may_block = e->is_chpt = true;
             break;
@@ -313,19 +313,20 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     const context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 
-    uint64_t eid = context_evec_id(ctx);
     switch (context_evec_event(ctx)) {
         case CONTEXT_EVEC_PREPARE:
-            _posthandle_prepare(ctx->id, eid);
+            _posthandle_prepare(ctx->id, context_evec_id(ctx));
             break;
         case CONTEXT_EVEC_CANCEL:
-            _posthandle_cancel(ctx->id, eid);
+            _posthandle_cancel(ctx->id, context_evec_id(ctx));
             break;
         case CONTEXT_EVEC_WAKE:
-            _posthandle_wake(ctx->id, eid, context_evec_wake_count(ctx));
+            _posthandle_wake(ctx->id, context_evec_id(ctx),
+                             context_evec_wake_count(ctx));
             break;
         case CONTEXT_EVEC_MOVE:
-            _posthandle_move(ctx->id, eid, context_evec_move_dst(ctx));
+            _posthandle_move(ctx->id, context_evec_id(ctx),
+                             context_evec_move_dst(ctx));
             break;
         default:
             break;

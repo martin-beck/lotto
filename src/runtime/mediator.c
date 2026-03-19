@@ -11,6 +11,7 @@
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/events.h>
+#include <lotto/runtime/ingress_capture.h>
 #include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/mediator.h>
 #include <lotto/runtime/runtime.h>
@@ -33,6 +34,7 @@ bool _enter_capture(mediator_t *m);
 bool _leave_capture(mediator_t *m);
 bool _nested_capture(mediator_t *m);
 static inline bool _guard_capture(mediator_t *m, context_t *ctx);
+static inline context_t _context_from_capture(const ingress_capture *capture);
 
 static mediator_t mediator_key_;
 
@@ -52,6 +54,12 @@ static bool
 _mediator_registration_enabled()
 {
     return vatomic_xchg(&_registration_enabled, false);
+}
+
+static inline context_t
+_context_from_capture(const ingress_capture *capture)
+{
+    return runtime_context_from_ingress_capture(capture);
 }
 
 static void
@@ -78,18 +86,17 @@ _mediator_dtor(void *arg)
     sys_pthread_setspecific(key, NULL);
 
     if (m->registration_status == MEDIATOR_REGISTRATION_DONE) {
-        context_t *ctx = ctx(.id = m->id, .func = __FUNCTION__);
-        *ctx           = context_with_types(*ctx, EVENT_TASK_FINI,
-                                            EVENT_TASK_FINI, CAT_NONE);
-        if (!mediator_capture(m, ctx)) {
-            switch (mediator_resume(m, ctx)) {
+        context_t ctx = runtime_context_synthetic(__FUNCTION__, EVENT_TASK_FINI);
+        ctx.id        = m->id;
+        if (!mediator_capture(m, &ctx)) {
+            switch (mediator_resume(m, &ctx)) {
                 case MEDIATOR_OK:
                     break;
                 case MEDIATOR_ABORT:
-                    lotto_exit(ctx, REASON_ABORT);
+                    lotto_exit(&ctx, REASON_ABORT);
                     break;
                 case MEDIATOR_SHUTDOWN:
-                    lotto_exit(ctx, REASON_SHUTDOWN);
+                    lotto_exit(&ctx, REASON_SHUTDOWN);
                     break;
                 default:
                     logger_fatalf("unexpected mediator resume output\n");
@@ -253,7 +260,7 @@ mediator_capture(mediator_t *m, context_t *ctx)
         switch (context_core_event(ctx)) {
             case CONTEXT_CORE_CALL:
             case CONTEXT_CORE_TASK_CREATE:
-            mediator_detach(m);
+                mediator_detach(m);
                 return true;
             default:
                 break;
@@ -346,6 +353,13 @@ mediator_capture(mediator_t *m, context_t *ctx)
     return true;
 }
 
+bool
+mediator_capture_ingress(mediator_t *m, const ingress_capture *capture)
+{
+    context_t ctx = _context_from_capture(capture);
+    return mediator_capture(m, &ctx);
+}
+
 static inline bool
 _guard_resume(mediator_t *m)
 {
@@ -398,6 +412,13 @@ mediator_resume(mediator_t *m, context_t *ctx)
     return st;
 }
 
+mediator_status_t
+mediator_resume_ingress(mediator_t *m, const ingress_capture *capture)
+{
+    context_t ctx = _context_from_capture(capture);
+    return mediator_resume(m, &ctx);
+}
+
 static inline bool
 _should_resume(const mediator_t *m)
 {
@@ -429,6 +450,13 @@ mediator_return(mediator_t *m, context_t *ctx)
     ASSERT(plan_next(m->plan) == ACTION_RETURN);
     engine_return(ctx);
     plan_done(&m->plan);
+}
+
+void
+mediator_return_ingress(mediator_t *m, const ingress_capture *capture)
+{
+    context_t ctx = _context_from_capture(capture);
+    mediator_return(m, &ctx);
 }
 
 void

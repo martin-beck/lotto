@@ -15,21 +15,15 @@
 static inline bool
 context_is_task_velocity_event(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_VELOCITY)) {
-        return true;
-    }
-    return ctx->cat == CAT_TASK_VELOCITY;
+    return context_has_event_type(ctx, EVENT_TASK_VELOCITY);
 }
 
 static inline uint64_t
 context_task_velocity_probability(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_TASK_VELOCITY) &&
-        context_has_capture_point(ctx)) {
-        return (uint64_t)
-            ((task_velocity_event_t *)ctx->cp->payload)->probability;
-    }
-    return (uint64_t)ctx->args[0].value.u64;
+    ASSERT(context_has_event_type(ctx, EVENT_TASK_VELOCITY));
+    ASSERT(context_has_capture_point(ctx));
+    return (uint64_t)((task_velocity_event_t *)ctx->cp->payload)->probability;
 }
 
 #endif

@@ -1,11 +1,11 @@
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 
+#include "state.h"
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include "state.h"
+#include <dice/self.h>
 #include <lotto/base/tidmap.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/pubsub.h>
@@ -33,7 +33,7 @@ lotto_fork_execve(const char *pathname, char *const argv[], char *const envp[])
         return -1;
     }
 
-    pid_t ret = -1;
+    pid_t ret       = -1;
     fork_event_t ev = {.func = __FUNCTION__};
 
     PS_PUBLISH(INTERCEPT_BEFORE, EVENT_FORK_EXECVE, &ev, 0);
@@ -52,26 +52,26 @@ lotto_fork_execve(const char *pathname, char *const argv[], char *const envp[])
 }
 
 PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_FORK_EXECVE, {
-    fork_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
-    capture_point cp = {.src_type = EVENT_FORK_EXECVE, .payload = ev};
+    fork_event_t *ev   = EVENT_PAYLOAD(event);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = ev->func);
+    capture_point cp   = {.src_type = EVENT_FORK_EXECVE, .payload = ev};
     PS_PUBLISH(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, &cp,
                (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_FORK_EXECVE, {
-    fork_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx    = *ctx(.self = self_md(), .func = ev->func);
-    capture_point cp = {.src_type = EVENT_FORK_EXECVE, .payload = ev};
+    fork_event_t *ev   = EVENT_PAYLOAD(event);
+    context_origin ctx = *ctx_origin(.self = self_md(), .func = ev->func);
+    capture_point cp   = {.src_type = EVENT_FORK_EXECVE, .payload = ev};
     PS_PUBLISH(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, &cp,
                (metadata_t *)&ctx);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_FORK_EXECVE) {
         return PS_OK;
@@ -82,8 +82,8 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     if (cp->src_type != EVENT_FORK_EXECVE) {
         return PS_OK;

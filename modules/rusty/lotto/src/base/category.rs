@@ -3,7 +3,11 @@ use lotto_sys as raw;
 pub type Category = raw::base_category;
 
 pub fn effective_event_type(ctx: &raw::context_t) -> u32 {
-    ctx.type_ as u32
+    if ctx.type_ != 0 {
+        ctx.type_ as u32
+    } else {
+        ctx.src_type as u32
+    }
 }
 
 pub fn effective_category(ctx: &raw::context_t) -> Category {

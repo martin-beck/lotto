@@ -23,7 +23,8 @@
 #define EV_PC ((uintptr_t)ev->pc)
 #define PUBLISH_TSAN_INGRESS(CHAIN, SRC_TYPE, PAYLOAD, FUNC)                   \
     do {                                                                       \
-        context_t ctx = *ctx_pc(.self = md, .pc = EV_PC, .func = (FUNC));      \
+        context_origin ctx =                                                   \
+            *ctx_origin_pc(.self = md, .pc = EV_PC, .func = (FUNC));           \
         capture_point cp = {.src_type = (SRC_TYPE), .payload = (PAYLOAD)};     \
         PS_PUBLISH((CHAIN), EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);  \
     } while (0)
@@ -42,25 +43,6 @@
 // EVENT_MA_FENCE                38       ./include/dice/events/memaccess.h
 // -----------------------------------------------------------------------------
 #include <dice/events/memaccess.h>
-
-static void
-ingress_stacktrace_enter(const context_t *origin, const void *caller)
-{
-    context_t ctx = *origin;
-    ctx.type      = EVENT_FUNC_ENTRY;
-    ctx.args[0]   = arg_ptr(caller);
-    ctx           = runtime_ingress_finalize_context(ctx, CAT_NONE);
-    runtime_ingress(&ctx);
-}
-
-static void
-ingress_stacktrace_exit(const context_t *origin)
-{
-    context_t ctx = *origin;
-    ctx.type      = EVENT_FUNC_EXIT;
-    ctx           = runtime_ingress_finalize_context(ctx, CAT_NONE);
-    runtime_ingress(&ctx);
-}
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_MA_READ, {
     struct ma_read_event *ev = EVENT_PAYLOAD(event);
@@ -174,33 +156,28 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_STACKTRACE_EXIT, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     switch (cp->src_type) {
         case EVENT_MA_READ:
         case EVENT_MA_WRITE:
             runtime_ingress_module_submit_memaccess(origin, cp);
             return PS_OK;
-        case EVENT_STACKTRACE_ENTER: {
-            context_t ctx = runtime_ingress_module_base(origin, cp);
-            stacktrace_event_t *ev = cp->payload;
-            ingress_stacktrace_enter(&ctx, ev->caller);
+        case EVENT_STACKTRACE_ENTER:
+            runtime_ingress_module_submit_event(origin, cp, EVENT_FUNC_ENTRY);
             return PS_OK;
-        }
-        case EVENT_STACKTRACE_EXIT: {
-            context_t ctx = runtime_ingress_module_base(origin, cp);
-            ingress_stacktrace_exit(&ctx);
+        case EVENT_STACKTRACE_EXIT:
+            runtime_ingress_module_submit_event(origin, cp, EVENT_FUNC_EXIT);
             return PS_OK;
-        }
         default:
             return PS_OK;
     }
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     switch (cp->src_type) {
         case EVENT_MA_CMPXCHG:
@@ -218,8 +195,8 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     switch (cp->src_type) {
         case EVENT_MA_CMPXCHG:

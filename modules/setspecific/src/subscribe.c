@@ -5,8 +5,8 @@
 #include <dice/chains/intercept.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
-#include <lotto/engine/pubsub.h>
 #include <lotto/base/category.h>
+#include <lotto/engine/pubsub.h>
 #include <lotto/evec.h>
 #include <lotto/mutex.h>
 #include <lotto/rsrc_deadlock.h>
@@ -98,7 +98,7 @@ pthread_setspecific(pthread_key_t key, const void *value)
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_KEY_CREATE, {
     key_create_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx              = *ctx(.self = md, .func = "pthread_key_create");
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_key_create");
     capture_key_create_event ce = {
         .key        = ev->key,
         .destructor = ev->destructor,
@@ -110,7 +110,7 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_KEY_CREATE, {
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_KEY_DELETE, {
     key_delete_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx              = *ctx(.self = md, .func = "pthread_key_delete");
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_key_delete");
     capture_key_delete_event ce = {.key = ev->key};
     capture_point cp = {.src_type = EVENT_KEY_DELETE, .key_delete = &ce};
     PS_PUBLISH(CHAIN_INGRESS, EVENT_KEY_DELETE, &cp, (metadata_t *)&ctx);
@@ -119,7 +119,7 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_KEY_DELETE, {
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_SET_SPECIFIC, {
     set_specific_event_t *ev = EVENT_PAYLOAD(event);
-    context_t ctx                = *ctx(.self = md, .func = "pthread_setspecific");
+    context_origin ctx = *ctx_origin(.self = md, .func = "pthread_setspecific");
     capture_set_specific_event ce = {
         .key   = ev->key,
         .value = ev->value,

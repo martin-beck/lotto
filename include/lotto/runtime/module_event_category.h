@@ -42,7 +42,7 @@
     #define EVENT_ROGUE 158
 #endif
 #ifndef EVENT_AWAIT
-    #define EVENT_AWAIT 159
+    #define EVENT_AWAIT      159
     #define EVENT_SPIN_START 160
     #define EVENT_SPIN_END   161
 #endif
@@ -62,8 +62,8 @@
 #ifndef EVENT_CXA_GUARD_CALL
     #define EVENT_CXA_GUARD_CALL 175
 #endif
-#ifndef EVENT_JOIN
-    #define EVENT_JOIN 176
+#ifndef EVENT_TASK_JOIN
+    #define EVENT_TASK_JOIN 176
 #endif
 
 static inline category_t
@@ -115,7 +115,7 @@ context_module_category(type_id type)
             return CAT_POLL;
         case EVENT_TASK_VELOCITY:
             return CAT_TASK_VELOCITY;
-        case EVENT_JOIN:
+        case EVENT_TASK_JOIN:
             return CAT_JOIN;
         case EVENT_REGION_PREEMPTION:
             return CAT_REGION_PREEMPTION;
@@ -123,8 +123,6 @@ context_module_category(type_id type)
         case EVENT_FORK_EXECVE:
         case EVENT_CXA_GUARD_CALL:
             return CAT_CALL;
-        case EVENT_ROGUE:
-            return CAT_TASK_BLOCK;
         default:
             return CAT_NONE;
     }

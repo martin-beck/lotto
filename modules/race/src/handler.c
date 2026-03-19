@@ -194,12 +194,12 @@ race_t
 race_check(const context_t *ctx, clk_t clk)
 {
     const context_memaccess_event_t cat = context_memaccess_event(ctx);
-    race_t race          = {0};
-    ot_entry e           = {
-                  .addr    = context_memaccess_addr(ctx),
-                  .id      = ctx->vid != NO_TASK ? ctx->vid : ctx->id,
-                  .virtual = ctx->vid != NO_TASK,
-                  .pc      = ctx->pc,
+    race_t race                         = {0};
+    ot_entry e                          = {
+                                 .addr    = 0,
+                                 .id      = ctx->vid != NO_TASK ? ctx->vid : ctx->id,
+                                 .virtual = ctx->vid != NO_TASK,
+                                 .pc      = ctx->pc,
     };
 
 #ifndef RACE_DEFAULT
@@ -216,6 +216,7 @@ race_check(const context_t *ctx, clk_t clk)
             e.readonly = true;
             // fallthru
         case CONTEXT_MA_BEFORE_WRITE:
+            e.addr = context_memaccess_addr(ctx);
             if (e.addr == 0)
                 return race;
 
@@ -229,6 +230,7 @@ race_check(const context_t *ctx, clk_t clk)
         case CONTEXT_MA_BEFORE_CMPXCHG:
         case CONTEXT_MA_BEFORE_XCHG:
         case CONTEXT_MA_BEFORE_RMW:
+            e.addr = context_memaccess_addr(ctx);
             if (e.addr == 0)
                 return race;
 

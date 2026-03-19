@@ -32,7 +32,7 @@ context_mutex_event(const context_t *ctx)
         default:
             break;
     }
-    switch (ctx->cat) {
+    switch (context_compat_category(ctx)) {
         case CAT_MUTEX_ACQUIRE:
             return CONTEXT_MUTEX_ACQUIRE;
         case CAT_MUTEX_TRYACQUIRE:
@@ -47,44 +47,40 @@ context_mutex_event(const context_t *ctx)
 static inline uint64_t
 context_mutex_addr(const context_t *ctx)
 {
-    if (context_has_capture_point(ctx)) {
-        switch (context_event_type(ctx)) {
-            case EVENT_MUTEX_ACQUIRE:
-                return (uint64_t)(uintptr_t)
-                    ((mutex_acquire_event_t *)ctx->cp->payload)->addr;
-            case EVENT_MUTEX_TRYACQUIRE:
-                return (uint64_t)(uintptr_t)
-                    ((mutex_tryacquire_event_t *)ctx->cp->payload)->addr;
-            case EVENT_MUTEX_RELEASE:
-                return (uint64_t)(uintptr_t)
-                    ((mutex_release_event_t *)ctx->cp->payload)->addr;
-            default:
-                break;
-        }
+    ASSERT(context_has_capture_point(ctx));
+    switch (context_mutex_event(ctx)) {
+        case CONTEXT_MUTEX_ACQUIRE:
+            return (uint64_t)(uintptr_t)((mutex_acquire_event_t *)
+                                             ctx->cp->payload)
+                ->addr;
+        case CONTEXT_MUTEX_TRYACQUIRE:
+            return (uint64_t)(uintptr_t)((mutex_tryacquire_event_t *)
+                                             ctx->cp->payload)
+                ->addr;
+        case CONTEXT_MUTEX_RELEASE:
+            return (uint64_t)(uintptr_t)((mutex_release_event_t *)
+                                             ctx->cp->payload)
+                ->addr;
+        default:
+            ASSERT(0);
+            return 0;
     }
-    return (uint64_t)(uintptr_t)ctx->args[0].value.ptr;
 }
 
 static inline bool
 context_mutex_try_ok(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_MUTEX_TRYACQUIRE) &&
-        context_has_capture_point(ctx)) {
-        return ((mutex_tryacquire_event_t *)ctx->cp->payload)->ret == 0;
-    }
-    return ctx->args[1].value.u8 == 0;
+    ASSERT(context_mutex_event(ctx) == CONTEXT_MUTEX_TRYACQUIRE);
+    ASSERT(context_has_capture_point(ctx));
+    return ((mutex_tryacquire_event_t *)ctx->cp->payload)->ret == 0;
 }
 
 static inline void
 context_mutex_try_set_ret(const context_t *ctx, int ret)
 {
-    if (context_has_event_type(ctx, EVENT_MUTEX_TRYACQUIRE) &&
-        context_has_capture_point(ctx)) {
-        ((mutex_tryacquire_event_t *)ctx->cp->payload)->ret = ret;
-        return;
-    }
-    arg_t *out = (arg_t *)&ctx->args[1];
-    out->value.u8 = ret;
+    ASSERT(context_mutex_event(ctx) == CONTEXT_MUTEX_TRYACQUIRE);
+    ASSERT(context_has_capture_point(ctx));
+    ((mutex_tryacquire_event_t *)ctx->cp->payload)->ret = ret;
 }
 
 #endif

@@ -18,19 +18,16 @@ typedef enum context_poll_event {
 static inline context_poll_event_t
 context_poll_event(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_POLL)) {
-        return CONTEXT_POLL_WAIT;
-    }
-    return ctx->cat == CAT_POLL ? CONTEXT_POLL_WAIT : CONTEXT_POLL_NONE;
+    return context_has_event_type(ctx, EVENT_POLL) ? CONTEXT_POLL_WAIT :
+                                                     CONTEXT_POLL_NONE;
 }
 
 static inline poll_args_t *
 context_poll_args(const context_t *ctx)
 {
-    if (context_has_event_type(ctx, EVENT_POLL) && context_has_capture_point(ctx)) {
-        return ((poll_event_t *)ctx->cp->payload)->args;
-    }
-    return (poll_args_t *)ctx->args[0].value.ptr;
+    ASSERT(context_has_event_type(ctx, EVENT_POLL));
+    ASSERT(context_has_capture_point(ctx));
+    return ((poll_event_t *)ctx->cp->payload)->args;
 }
 
 #endif

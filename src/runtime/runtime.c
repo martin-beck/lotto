@@ -11,8 +11,8 @@
 #include <lotto/engine/engine.h> // for engine_init
 #include <lotto/engine/pubsub.h>
 #include <lotto/runtime/context_payload.h>
-#include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/ingress.h>
+#include <lotto/runtime/ingress_events.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/sys/memory.h>
@@ -179,12 +179,8 @@ _runtime_fini()
         _logger_fd = -1;
     }
 
-    context_t ctx = {
-        .id       = 1, /* main task */
-        .cat      = context_core_category(EVENT_TASK_FINI),
-        .type     = EVENT_TASK_FINI,
-        .src_type = EVENT_TASK_FINI,
-    };
+    context_t ctx = runtime_context_synthetic(__FUNCTION__, EVENT_TASK_FINI);
+    ctx.id        = 1; /* main task */
     lotto_exit(&ctx, REASON_SUCCESS);
 }
 

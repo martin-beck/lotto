@@ -1,11 +1,11 @@
 #include <dice/chains/capture.h>
 #include <dice/chains/intercept.h>
-#include <dice/self.h>
 #include <dice/module.h>
 #include <dice/pubsub.h>
+#include <dice/self.h>
 #include <lotto/engine/pubsub.h>
-#include <lotto/mutex.h>
 #include <lotto/modules/mutex/events.h>
+#include <lotto/mutex.h>
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
@@ -71,16 +71,15 @@ void
 _lotto_mutex_acquire_named_src(type_id src_type, const char *func, void *addr,
                                const void *pc)
 {
-    context_t ctx                  = *ctx_pc(.self = self_md(),
-                            .pc = (uintptr_t)pc, .func = func);
+    context_origin ctx =
+        *ctx_origin_pc(.self = self_md(), .pc = (uintptr_t)pc, .func = func);
     mutex_acquire_event_t ev = {
         .func = func,
         .addr = addr,
         .pc   = pc,
     };
     capture_point cp = {.src_type = src_type, .payload = &ev};
-    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp,
-               (metadata_t *)&ctx);
+    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
 }
 
 void
@@ -96,12 +95,12 @@ _lotto_mutex_acquire(void *addr, const void *pc)
 
 
 int
-_lotto_mutex_tryacquire_named_src(type_id src_type, const char *func, void *addr,
-                                  const void *pc)
+_lotto_mutex_tryacquire_named_src(type_id src_type, const char *func,
+                                  void *addr, const void *pc)
 {
-    int ret                        = 0;
-    context_t ctx                  = *ctx_pc(.self = self_md(),
-                            .pc = (uintptr_t)pc, .func = func);
+    int ret = 0;
+    context_origin ctx =
+        *ctx_origin_pc(.self = self_md(), .pc = (uintptr_t)pc, .func = func);
     mutex_tryacquire_event_t ev = {
         .func = func,
         .addr = addr,
@@ -109,8 +108,7 @@ _lotto_mutex_tryacquire_named_src(type_id src_type, const char *func, void *addr
         .ret  = ret,
     };
     capture_point cp = {.src_type = src_type, .payload = &ev};
-    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp,
-               (metadata_t *)&ctx);
+    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
     return ev.ret;
 }
 
@@ -131,16 +129,15 @@ void
 _lotto_mutex_release_named_src(type_id src_type, const char *func, void *addr,
                                const void *pc)
 {
-    context_t ctx                  = *ctx_pc(.self = self_md(),
-                            .pc = (uintptr_t)pc, .func = func);
+    context_origin ctx =
+        *ctx_origin_pc(.self = self_md(), .pc = (uintptr_t)pc, .func = func);
     mutex_release_event_t ev = {
         .func = func,
         .addr = addr,
         .pc   = pc,
     };
     capture_point cp = {.src_type = src_type, .payload = &ev};
-    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp,
-               (metadata_t *)&ctx);
+    PS_PUBLISH(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, &cp, (metadata_t *)&ctx);
 }
 
 void
@@ -174,8 +171,8 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_MUTEX_RELEASE, {
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
-    const context_t *origin = (const context_t *)md;
-    capture_point *cp       = (capture_point *)event;
+    const context_origin *origin = (const context_origin *)md;
+    capture_point *cp            = (capture_point *)event;
 
     switch (cp->src_type) {
         case EVENT_MUTEX_ACQUIRE: {
