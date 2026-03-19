@@ -14,6 +14,8 @@
 #include <lotto/base/tidmap.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/modules/priority/context_payload.h>
+#include <lotto/modules/priority/events.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -102,7 +104,7 @@ _priority_handle(const context_t *ctx, event_t *e)
             }
             t = (task_t *)tidmap_find(&_state.map, ctx->id);
             ASSERT(t);
-            t->priority = (int64_t)ctx->args[0].value.u64;
+            t->priority = context_priority_value(ctx);
             break;
     }
     if (e->readonly || e->skip) {

@@ -1,7 +1,6 @@
 #include <errno.h>
 
 #include "dice/pubsub.h"
-#include "lotto/base/arg.h"
 #include <dice/chains/capture.h>
 #include <dice/events/pthread.h>
 #include <dice/module.h>
@@ -29,13 +28,6 @@ DECL_PTHREAD_JOIN_RET(ESRCH)
     case (VAL):                                                                \
         ev->func = (void *)pthread_nop_##VAL##_;                               \
         break
-
-typedef struct join_event {
-    uintptr_t thread;
-    void **ptr;
-    int *ret;
-} join_event_t;
-
 
 PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_THREAD_JOIN, {
     struct pthread_join_event *ev = EVENT_PAYLOAD(event);
@@ -71,20 +63,11 @@ PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_THREAD_JOIN, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
 
     if (cp->src_type != EVENT_JOIN) {
         return PS_OK;
     }
 
-    join_event_t *ev = cp->payload;
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
-    ctx.cat      = CAT_JOIN;
-    ctx.args[0]  = arg(uint64_t, ev->thread);
-    ctx.args[1]  = arg_ptr(ev->ptr);
-    ctx.args[2]  = arg_ptr(ev->ret);
-    runtime_ingress(&ctx);
+    runtime_ingress_module_submit(origin, cp, CAT_JOIN);
     return PS_OK;
 })

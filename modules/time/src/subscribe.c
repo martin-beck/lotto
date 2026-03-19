@@ -206,15 +206,12 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_TIME_YIELD, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx           = *origin;
-    ctx.type                = EVENT_MODULE_INTERCEPT;
-    ctx.src_type            = cp->src_type;
 
     if (cp->src_type != EVENT_TIME_YIELD) {
         return PS_OK;
     }
 
-    ctx.cat = CAT_SYS_YIELD;
+    context_t ctx = runtime_ingress_module_context(origin, cp, CAT_SYS_YIELD);
     runtime_ingress(&ctx);
     return PS_OK;
 })

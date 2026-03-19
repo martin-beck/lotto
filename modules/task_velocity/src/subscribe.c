@@ -13,10 +13,6 @@
 #include <lotto/sys/assert.h>
 #include <lotto/velocity.h>
 
-typedef struct {
-    int64_t probability;
-} task_velocity_event_t;
-
 PS_ADVERTISE_TYPE(EVENT_TASK_VELOCITY)
 
 static void
@@ -54,17 +50,11 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_TASK_VELOCITY, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx           = *origin;
-    ctx.type                = EVENT_MODULE_INTERCEPT;
-    ctx.src_type            = cp->src_type;
 
     if (cp->src_type != EVENT_TASK_VELOCITY) {
         return PS_OK;
     }
 
-    task_velocity_event_t *ev = cp->payload;
-    ctx.cat                   = CAT_TASK_VELOCITY;
-    ctx.args[0]               = arg(int64_t, ev->probability);
-    runtime_ingress(&ctx);
+    runtime_ingress_module_submit(origin, cp, CAT_TASK_VELOCITY);
     return PS_OK;
 })

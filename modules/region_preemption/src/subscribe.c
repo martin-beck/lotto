@@ -12,10 +12,6 @@
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
 
-typedef struct {
-    bool in_region;
-} region_preemption_event_t;
-
 PS_ADVERTISE_TYPE(EVENT_REGION_PREEMPTION)
 
 static void
@@ -153,17 +149,11 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_REGION_PREEMPTION, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx           = *origin;
-    ctx.type                = EVENT_MODULE_INTERCEPT;
-    ctx.src_type            = cp->src_type;
 
     if (cp->src_type != EVENT_REGION_PREEMPTION) {
         return PS_OK;
     }
 
-    region_preemption_event_t *ev = cp->payload;
-    ctx.cat                       = CAT_REGION_PREEMPTION;
-    ctx.args[0]                   = arg(int64_t, ev->in_region);
-    runtime_ingress(&ctx);
+    runtime_ingress_module_submit(origin, cp, CAT_REGION_PREEMPTION);
     return PS_OK;
 })

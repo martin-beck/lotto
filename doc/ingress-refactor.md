@@ -17,10 +17,15 @@ The intended event flow is:
    - `CHAIN_INGRESS_BEFORE`
    - `CHAIN_INGRESS_AFTER`
 
-4. Existing runtime bridge
+4. Existing runtime ingress compatibility layer
    The current system still converts ingress back into the old
    `runtime_ingress()`, `runtime_ingress_before()`, and
    `runtime_ingress_after()` APIs.
+
+   For runtime-owned/core ingress events, the event-to-`context_t`
+   reconstruction now lives inside the runtime ingress layer itself rather
+   than in `ingress_bridge.c`. The bridge subscribers are now mostly thin
+   forwarders for `(origin context, semantic ingress type, capture_point)`.
 
 5. Sequencer / handler boundary
    The engine now also publishes explicit sequencer chains:
@@ -42,6 +47,8 @@ It currently contains:
 
 - Dice metadata prefix `metadata_t _`
 - `metadata_t *self` to keep the original Dice `self` metadata object
+- optional `capture_point *cp` so handlers/posthandle can read the ingress
+  payload directly during the synchronous runtime path
 - `cat`
 - task ids
 - `pc`, `func`, `func_addr`
@@ -119,6 +126,14 @@ bridges:
 - join
 - `sched_yield`
 
+Several of those bridges now also preserve the payload into the handler path
+instead of re-packing everything into `ctx.args[]`. The current direct
+`capture_point` consumers are:
+
+- mutex
+- rwlock
+- evec
+
 ### Core/runtime-owned ingress
 
 The runtime bridge currently handles core ingress events such as:
@@ -144,16 +159,16 @@ to the explicit pair:
 - `CHAIN_SEQUENCER_CAPTURE / EVENT_SEQUENCER_CAPTURE`
 - `CHAIN_SEQUENCER_RESUME / EVENT_SEQUENCER_RESUME`
 
-The current engine still publishes both old and new paths in parallel so
-module migrations can be staged safely.
+The legacy resume publication is gone, and the legacy capture publication is
+gone for the non-QEMU tree.
 
 Most runtime handler modules now subscribe through:
 
 - `REGISTER_SEQUENCER_HANDLER(...)`
 - `LOTTO_SUBSCRIBE_SEQUENCER_RESUME(...)`
 
-This means the new sequencer chains are already the primary consumer-facing
-handler boundary even though the legacy publications still exist underneath.
+This means the new sequencer chains are now the actual primary
+consumer-facing handler boundary.
 
 ## Important Current Boundary
 
@@ -163,10 +178,32 @@ The intended public/non-legacy boundary is:
 
 The current compatibility boundary is:
 
-- `INGRESS_*` subscribers still call `runtime_ingress*`
+- `INGRESS_*` subscribers still end in `runtime_ingress*`
+- module-local bridges still reconstruct module-specific `context_t`
+- runtime-owned ingress events are now reconstructed inside the runtime
+  ingress layer rather than in the bridge subscriber
 
 This is deliberate staging. The mediator has intentionally not been refactored
 yet while the ingress edge is still being stabilized.
+
+## Current Capture-Point Pattern
+
+The current migration pattern for a module is:
+
+1. Raw/custom producers publish on `INTERCEPT_*`
+2. Dice/self republishes on `CAPTURE_*`
+3. A module subscriber normalizes the source payload into a semantic
+   `capture_point`
+4. The module publishes `EVENT_MODULE_INTERCEPT` on the appropriate
+   `INGRESS_*` chain
+5. A local ingress bridge still maps that into the old `runtime_ingress*`
+   path
+6. `context_t.cp` preserves the original `capture_point` so handlers and
+   posthandle can read/write the payload directly
+
+This reduces the amount of module-specific data that has to be reconstructed
+through `ctx.args[]` and is the current bridge from the old runtime model to
+the future one.
 
 ## Why `category_t` Still Exists
 
@@ -199,8 +236,8 @@ Status:
 ### Mid-term
 
 1. Reduce direct dependence on `context_t.cat`
-2. Remove the legacy dual-publication on the old handler chains once the
-   remaining consumers and tests no longer depend on it
+2. Push `capture_point` deeper into more handlers so module bridges stop
+   reconstructing `ctx.args[]`
 3. Move handler/sequencer boundaries away from the current implicit
    `context_t` + `event_t` pairing
 4. Introduce explicit sequencer-facing messages instead of smuggling context via

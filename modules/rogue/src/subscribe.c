@@ -57,10 +57,7 @@ PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
-    ctx.cat      = CAT_TASK_BLOCK;
+    ctx          = runtime_ingress_module_context(origin, cp, CAT_TASK_BLOCK);
     runtime_ingress(&ctx);
     return PS_OK;
 })
@@ -74,10 +71,7 @@ PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
         return PS_OK;
     }
 
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
-    ctx.cat      = CAT_TASK_BLOCK;
+    ctx          = runtime_ingress_module_context(origin, cp, CAT_TASK_BLOCK);
     runtime_ingress_after(&ctx);
     return PS_OK;
 })

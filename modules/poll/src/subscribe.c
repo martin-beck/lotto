@@ -29,10 +29,6 @@
 #include <lotto/util/casts.h>
 #include <sys/types.h>
 
-typedef struct poll_event {
-    poll_args_t *args;
-} poll_event_t;
-
 PS_ADVERTISE_TYPE(EVENT_POLL)
 
 static void
@@ -79,17 +75,10 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_POLL, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx           = *origin;
-    ctx.type                = EVENT_MODULE_INTERCEPT;
-    ctx.src_type            = cp->src_type;
-
     if (cp->src_type != EVENT_POLL) {
         return PS_OK;
     }
 
-    poll_event_t *ev = cp->payload;
-    ctx.cat          = CAT_POLL;
-    ctx.args[0]      = arg_ptr(ev->args);
-    runtime_ingress(&ctx);
+    runtime_ingress_module_submit(origin, cp, CAT_POLL);
     return PS_OK;
 })

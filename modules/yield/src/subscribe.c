@@ -29,16 +29,11 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_SCHED_YIELD, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
 
     if (cp->src_type != EVENT_SCHED_YIELD) {
         return PS_OK;
     }
 
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
-    ctx.cat      = CAT_USER_YIELD;
-    runtime_ingress(&ctx);
+    runtime_ingress_module_submit(origin, cp, CAT_USER_YIELD);
     return PS_OK;
 })

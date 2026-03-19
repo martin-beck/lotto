@@ -108,47 +108,25 @@ PS_SUBSCRIBE(CAPTURE_BEFORE, EVENT_RWLOCK_TIMEDWRLOCK, {
 PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
-
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
     switch (cp->src_type) {
         case EVENT_RWLOCK_RDLOCK: {
-            struct pthread_rwlock_rdlock_event *ev = cp->payload;
-            ctx.cat     = CAT_RWLOCK_RDLOCK;
-            ctx.args[0] = arg_ptr(ev->lock);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_RDLOCK);
             return PS_OK;
         }
         case EVENT_RWLOCK_WRLOCK: {
-            struct pthread_rwlock_wrlock_event *ev = cp->payload;
-            ctx.cat     = CAT_RWLOCK_WRLOCK;
-            ctx.args[0] = arg_ptr(ev->lock);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_WRLOCK);
             return PS_OK;
         }
         case EVENT_RWLOCK_UNLOCK: {
-            struct pthread_rwlock_unlock_event *ev = cp->payload;
-            ctx.cat     = CAT_RWLOCK_UNLOCK;
-            ctx.args[0] = arg_ptr(ev->lock);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_UNLOCK);
             return PS_OK;
         }
         case EVENT_RWLOCK_TIMEDRDLOCK: {
-            struct pthread_rwlock_timedrdlock_event *ev = cp->payload;
-            ctx.cat     = CAT_RWLOCK_RDLOCK;
-            ctx.args[0] = arg_ptr(ev->lock);
-            ctx.args[1] = arg_ptr(ev->abstime);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_RDLOCK);
             return PS_OK;
         }
         case EVENT_RWLOCK_TIMEDWRLOCK: {
-            struct pthread_rwlock_timedwrlock_event *ev = cp->payload;
-            ctx.cat     = CAT_RWLOCK_WRLOCK;
-            ctx.args[0] = arg_ptr(ev->lock);
-            ctx.args[1] = arg_ptr(ev->abstime);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_WRLOCK);
             return PS_OK;
         }
         default:
@@ -159,28 +137,13 @@ PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
-
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
     switch (cp->src_type) {
-        case EVENT_RWLOCK_TRYRDLOCK: {
-            struct pthread_rwlock_tryrdlock_event *ev = cp->payload;
-            ctx.cat     = CAT_RWLOCK_TRYRDLOCK;
-            ctx.args[0] = arg_ptr(ev->lock);
-            runtime_ingress(&ctx);
-            ev->ret = (int)ctx.args[1].value.u32;
+        case EVENT_RWLOCK_TRYRDLOCK:
+            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_TRYRDLOCK);
             return PS_OK;
-        }
-        case EVENT_RWLOCK_TRYWRLOCK: {
-            struct pthread_rwlock_trywrlock_event *ev = cp->payload;
-            ctx.cat     = CAT_RWLOCK_TRYWRLOCK;
-            ctx.args[0] = arg_ptr(ev->lock);
-            runtime_ingress(&ctx);
-            ev->ret = (int)ctx.args[1].value.u32;
+        case EVENT_RWLOCK_TRYWRLOCK:
+            runtime_ingress_module_submit(origin, cp, CAT_RWLOCK_TRYWRLOCK);
             return PS_OK;
-        }
         default:
             return PS_OK;
     }

@@ -12,6 +12,8 @@
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/prng.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/modules/task_velocity/context_payload.h>
+#include <lotto/modules/task_velocity/events.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -97,7 +99,7 @@ _task_velocity_handle(const context_t *ctx, event_t *e)
         case CAT_TASK_VELOCITY:
             t = (task_t *)tidmap_find(&_state.map, ctx->id);
             ASSERT(t);
-            t->probability = CAST_TYPE(uint64_t, ctx->args[0].value.u64);
+            t->probability = context_task_velocity_probability(ctx);
             break;
         default:
             break;

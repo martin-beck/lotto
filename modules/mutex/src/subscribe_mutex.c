@@ -10,25 +10,6 @@
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
 
-struct mutex_acquire_event {
-    const void *pc;
-    const char *func;
-    void *addr;
-};
-
-struct mutex_tryacquire_event {
-    const void *pc;
-    const char *func;
-    void *addr;
-    int ret;
-};
-
-struct mutex_release_event {
-    const void *pc;
-    const char *func;
-    void *addr;
-};
-
 PS_ADVERTISE_TYPE(EVENT_MUTEX_ACQUIRE)
 PS_ADVERTISE_TYPE(EVENT_MUTEX_TRYACQUIRE)
 PS_ADVERTISE_TYPE(EVENT_MUTEX_RELEASE)
@@ -36,7 +17,7 @@ PS_ADVERTISE_TYPE(EVENT_MUTEX_RELEASE)
 void
 intercept_mutex_acquire_named(const char *func, void *addr, const void *pc)
 {
-    struct mutex_acquire_event ev = {
+    mutex_acquire_event_t ev = {
         .pc   = pc,
         .func = func,
         .addr = addr,
@@ -53,7 +34,7 @@ intercept_mutex_acquire(void *addr, const void *pc)
 int
 intercept_mutex_tryacquire_named(const char *func, void *addr, const void *pc)
 {
-    struct mutex_tryacquire_event ev = {
+    mutex_tryacquire_event_t ev = {
         .pc   = pc,
         .func = func,
         .addr = addr,
@@ -72,7 +53,7 @@ intercept_mutex_tryacquire(void *addr, const void *pc)
 void
 intercept_mutex_release_named(const char *func, void *addr, const void *pc)
 {
-    struct mutex_release_event ev = {
+    mutex_release_event_t ev = {
         .pc   = pc,
         .func = func,
         .addr = addr,
@@ -92,7 +73,7 @@ _lotto_mutex_acquire_named_src(type_id src_type, const char *func, void *addr,
 {
     context_t ctx                  = *ctx_pc(.self = self_md(),
                             .pc = (uintptr_t)pc, .func = func);
-    struct mutex_acquire_event ev = {
+    mutex_acquire_event_t ev = {
         .func = func,
         .addr = addr,
         .pc   = pc,
@@ -121,7 +102,7 @@ _lotto_mutex_tryacquire_named_src(type_id src_type, const char *func, void *addr
     int ret                        = 0;
     context_t ctx                  = *ctx_pc(.self = self_md(),
                             .pc = (uintptr_t)pc, .func = func);
-    struct mutex_tryacquire_event ev = {
+    mutex_tryacquire_event_t ev = {
         .func = func,
         .addr = addr,
         .pc   = pc,
@@ -152,7 +133,7 @@ _lotto_mutex_release_named_src(type_id src_type, const char *func, void *addr,
 {
     context_t ctx                  = *ctx_pc(.self = self_md(),
                             .pc = (uintptr_t)pc, .func = func);
-    struct mutex_release_event ev = {
+    mutex_release_event_t ev = {
         .func = func,
         .addr = addr,
         .pc   = pc,
@@ -175,19 +156,19 @@ _lotto_mutex_release(void *addr, const void *pc)
 }
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_MUTEX_ACQUIRE, {
-    struct mutex_acquire_event *ev = EVENT_PAYLOAD(event);
+    mutex_acquire_event_t *ev = EVENT_PAYLOAD(event);
     _lotto_mutex_acquire_named(ev->func, ev->addr, ev->pc);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_MUTEX_TRYACQUIRE, {
-    struct mutex_tryacquire_event *ev = EVENT_PAYLOAD(event);
+    mutex_tryacquire_event_t *ev = EVENT_PAYLOAD(event);
     ev->ret = _lotto_mutex_tryacquire_named(ev->func, ev->addr, ev->pc);
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_MUTEX_RELEASE, {
-    struct mutex_release_event *ev = EVENT_PAYLOAD(event);
+    mutex_release_event_t *ev = EVENT_PAYLOAD(event);
     _lotto_mutex_release_named(ev->func, ev->addr, ev->pc);
     return PS_OK;
 })
@@ -195,31 +176,18 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_MUTEX_RELEASE, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx           = *origin;
-    ctx.type                = EVENT_MODULE_INTERCEPT;
-    ctx.src_type            = cp->src_type;
 
     switch (cp->src_type) {
         case EVENT_MUTEX_ACQUIRE: {
-            struct mutex_acquire_event *ev = cp->payload;
-            ctx.cat                       = CAT_MUTEX_ACQUIRE;
-            ctx.args[0]                   = arg_ptr(ev->addr);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit(origin, cp, CAT_MUTEX_ACQUIRE);
             break;
         }
         case EVENT_MUTEX_TRYACQUIRE: {
-            struct mutex_tryacquire_event *ev = cp->payload;
-            ctx.cat                          = CAT_MUTEX_TRYACQUIRE;
-            ctx.args[0]                      = arg_ptr(ev->addr);
-            runtime_ingress(&ctx);
-            ev->ret = (int)ctx.args[1].value.u8;
+            runtime_ingress_module_submit(origin, cp, CAT_MUTEX_TRYACQUIRE);
             break;
         }
         case EVENT_MUTEX_RELEASE: {
-            struct mutex_release_event *ev = cp->payload;
-            ctx.cat                       = CAT_MUTEX_RELEASE;
-            ctx.args[0]                   = arg_ptr(ev->addr);
-            runtime_ingress(&ctx);
+            runtime_ingress_module_submit(origin, cp, CAT_MUTEX_RELEASE);
             break;
         }
         default:

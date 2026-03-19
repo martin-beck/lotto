@@ -5,6 +5,8 @@
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/modules/poll/context_payload.h>
+#include <lotto/modules/poll/events.h>
 #include <lotto/modules/timeout/timeout.h>
 #include <lotto/sys/poll.h>
 
@@ -243,7 +245,7 @@ _poll_handle(const context_t *ctx, event_t *e)
     }
     switch (ctx->cat) {
         case CAT_POLL:
-            _wait(ctx->id, (poll_args_t *)ctx->args[0].value.ptr);
+            _wait(ctx->id, context_poll_args(ctx));
             break;
         default:
             break;

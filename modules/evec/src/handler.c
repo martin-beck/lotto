@@ -6,6 +6,8 @@
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/evec.h>
+#include <lotto/modules/evec/context_payload.h>
+#include <lotto/modules/evec/events.h>
 #include <lotto/modules/timeout/timeout.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/casts.h>
@@ -272,7 +274,7 @@ _evec_handle(const context_t *ctx, event_t *e)
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
 
-    uint64_t eid   = ctx->args[0].value.u64;
+    uint64_t eid   = context_evec_id(ctx);
     bool may_block = false;
     clock_time(&_state.now);
     _state.received_timeout = false;
@@ -283,9 +285,8 @@ _evec_handle(const context_t *ctx, event_t *e)
             may_block = e->is_chpt = true;
             break;
         case CAT_EVEC_TIMED_WAIT:
-            _handle_timed_wait(
-                ctx->id, eid, (const struct timespec *)ctx->args[1].value.ptr,
-                (enum lotto_timed_wait_status *)ctx->args[2].value.ptr);
+            _handle_timed_wait(ctx->id, eid, context_evec_abstime(ctx),
+                               context_evec_timed_wait_ret(ctx));
             may_block = e->is_chpt = true;
             break;
         case CAT_EVEC_PREPARE:
@@ -312,7 +313,7 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     const context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 
-    uint64_t eid = ctx->args[0].value.u64;
+    uint64_t eid = context_evec_id(ctx);
     switch (ctx->cat) {
         case CAT_EVEC_PREPARE:
             _posthandle_prepare(ctx->id, eid);
@@ -321,10 +322,10 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
             _posthandle_cancel(ctx->id, eid);
             break;
         case CAT_EVEC_WAKE:
-            _posthandle_wake(ctx->id, eid, ctx->args[1].value.u32);
+            _posthandle_wake(ctx->id, eid, context_evec_wake_count(ctx));
             break;
         case CAT_EVEC_MOVE:
-            _posthandle_move(ctx->id, eid, ctx->args[1].value.u64);
+            _posthandle_move(ctx->id, eid, context_evec_move_dst(ctx));
             break;
         default:
             break;

@@ -9,4 +9,8 @@
 #define EVENT_RSRC_RELEASED  152
 #define EVENT_DEADLOCK__DETECTED 137
 
+typedef struct rsrc_event {
+    void *addr;
+} rsrc_event_t;
+
 #endif

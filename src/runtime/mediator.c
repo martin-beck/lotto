@@ -8,7 +8,10 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/state.h>
+#include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/events.h>
+#include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/mediator.h>
 #include <lotto/runtime/runtime.h>
 #include <lotto/runtime/switcher.h>
@@ -265,13 +268,13 @@ mediator_capture(mediator_t *m, context_t *ctx)
             ASSERT(ndestructors < MEDIATOR_DESTRUCTOR_CAP &&
                    "increase MEDIATOR_DESTRUCTOR_CAP");
             destructors[ndestructors++] = (struct mediator_destructor){
-                .key        = *(pthread_key_t *)ctx->args[0].value.ptr,
-                .destructor = (void (*)(void *))ctx->args[1].value.ptr};
+                .key        = context_key_value(ctx),
+                .destructor = context_key_destructor(ctx)};
             _leave_capture(m);
             return true;
 
         case CAT_KEY_DELETE: {
-            pthread_key_t key = *(pthread_key_t *)ctx->args[0].value.ptr;
+            pthread_key_t key = context_key_value(ctx);
             for (size_t i = 0; i < ndestructors; i++) {
                 if (destructors[i].key != key) {
                     continue;
@@ -285,8 +288,8 @@ mediator_capture(mediator_t *m, context_t *ctx)
 
         case CAT_SET_SPECIFIC: {
             struct mediator_value value = (struct mediator_value){
-                .key   = *(pthread_key_t *)ctx->args[0].value.ptr,
-                .value = (void *)ctx->args[1].value.ptr};
+                .key   = context_key_value(ctx),
+                .value = context_set_specific_value(ctx)};
             for (size_t i = 0; i < m->nvalues; i++) {
                 struct mediator_value *v = m->values + i;
                 if (v->key != value.key) {

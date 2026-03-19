@@ -11,10 +11,6 @@
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/ingress_events.h>
 
-typedef struct rsrc_event {
-    void *addr;
-} rsrc_event_t;
-
 PS_ADVERTISE_TYPE(EVENT_RSRC_ACQUIRING)
 PS_ADVERTISE_TYPE(EVENT_RSRC_RELEASED)
 
@@ -65,25 +61,14 @@ PS_SUBSCRIBE(CAPTURE_EVENT, EVENT_RSRC_RELEASED, {
 PS_SUBSCRIBE(CHAIN_INGRESS, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx           = *origin;
-    ctx.type                = EVENT_MODULE_INTERCEPT;
-    ctx.src_type            = cp->src_type;
 
     switch (cp->src_type) {
-        case EVENT_RSRC_ACQUIRING: {
-            rsrc_event_t *ev = cp->payload;
-            ctx.cat          = CAT_RSRC_ACQUIRING;
-            ctx.args[0]      = arg_ptr(ev->addr);
-            runtime_ingress(&ctx);
+        case EVENT_RSRC_ACQUIRING:
+            runtime_ingress_module_submit(origin, cp, CAT_RSRC_ACQUIRING);
             break;
-        }
-        case EVENT_RSRC_RELEASED: {
-            rsrc_event_t *ev = cp->payload;
-            ctx.cat          = CAT_RSRC_RELEASED;
-            ctx.args[0]      = arg_ptr(ev->addr);
-            runtime_ingress(&ctx);
+        case EVENT_RSRC_RELEASED:
+            runtime_ingress_module_submit(origin, cp, CAT_RSRC_RELEASED);
             break;
-        }
         default:
             break;
     }

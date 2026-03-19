@@ -2,6 +2,8 @@
 #include "state.h"
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/modules/region_preemption/context_payload.h>
+#include <lotto/modules/region_preemption/events.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
@@ -127,7 +129,7 @@ _region_preemption_handle(const context_t *ctx, event_t *e)
 
     switch (ctx->cat) {
         case CAT_REGION_PREEMPTION:
-            if (ctx->args[0].value.u64) {
+            if (context_region_preemption_in(ctx)) {
                 break;
             }
             _exit_region(ctx->id);
@@ -154,7 +156,7 @@ _region_preemption_handle(const context_t *ctx, event_t *e)
 
     switch (ctx->cat) {
         case CAT_REGION_PREEMPTION:
-            if (ctx->args[0].value.u64) {
+            if (context_region_preemption_in(ctx)) {
                 ASSERT(_task == NO_TASK);
                 _task = ctx->id;
             }

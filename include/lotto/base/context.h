@@ -14,6 +14,8 @@
 
 #define CTX_NARGS 4
 
+struct capture_point;
+
 /**
  * Represents the context of an intercepted call.
  */
@@ -22,6 +24,7 @@ typedef struct context {
     metadata_t *self;  ///< Original Dice self metadata for the capture
     type_id type;      ///< Semantic ingress event type
     type_id src_type;  ///< Normalized source event type
+    struct capture_point *cp; ///< Ingress capture point when available
     category_t cat; ///< Category of interception
     task_id id;     ///< Task ID
     task_id vid;    ///< Virtual task ID (NO_TASK if not available)
@@ -49,6 +52,12 @@ context_has_src_type(const context_t *ctx)
     return ctx != NULL && ctx->src_type != 0;
 }
 
+static inline bool
+context_has_capture_point(const context_t *ctx)
+{
+    return ctx != NULL && ctx->cp != NULL;
+}
+
 /*******************************************************************************
  * Context constructor macros
  ******************************************************************************/
@@ -61,6 +70,7 @@ context_has_src_type(const context_t *ctx)
     (&(context_t){.self = NULL,                                                \
                   .type = 0,                                                   \
                   .src_type = 0,                                               \
+                  .cp   = NULL,                                                \
                   .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
                   .vid  = NO_TASK,                                             \
@@ -75,6 +85,7 @@ context_has_src_type(const context_t *ctx)
     (&(context_t){.self = NULL,                                                \
                   .type = 0,                                                   \
                   .src_type = 0,                                               \
+                  .cp   = NULL,                                                \
                   .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
                   .vid  = NO_TASK,                                             \

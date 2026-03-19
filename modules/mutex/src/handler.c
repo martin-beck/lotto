@@ -5,10 +5,11 @@
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/modules/mutex/context_payload.h>
+#include <lotto/modules/mutex/events.h>
 #include <lotto/sys/assert.h>
 #include <lotto/sys/ensure.h>
 #include <lotto/sys/logger_block.h>
-#include <lotto/util/casts.h>
 #include <lotto/util/macros.h>
 
 struct mtx {
@@ -203,7 +204,7 @@ _mutex_handle(const context_t *ctx, event_t *e)
 
     ASSERT(ctx);
     ASSERT(ctx->id != NO_TASK);
-    uint64_t addr = CAST_TYPE(uint64_t, ctx->args[0].value.ptr);
+    uint64_t addr = context_mutex_addr(ctx);
     switch (ctx->cat) {
         case CAT_MUTEX_ACQUIRE:
             _handle_acquire(ctx->id, addr);
@@ -231,14 +232,13 @@ LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
     const context_t *ctx = (context_t *)as_any(v);
     ASSERT(ctx);
 
-    uint64_t addr = (uint64_t)ctx->args[0].value.ptr;
+    uint64_t addr = context_mutex_addr(ctx);
     switch (ctx->cat) {
         case CAT_MUTEX_ACQUIRE:
             _posthandle_acquire(ctx->id, addr);
             break;
         case CAT_MUTEX_TRYACQUIRE: {
-            arg_t *ok    = (arg_t *)&ctx->args[1];
-            ok->value.u8 = _posthandle_tryacquire(ctx->id, addr);
+            context_mutex_try_set_ret(ctx, _posthandle_tryacquire(ctx->id, addr));
         } break;
         case CAT_MUTEX_RELEASE:
             _posthandle_release(ctx->id, addr);

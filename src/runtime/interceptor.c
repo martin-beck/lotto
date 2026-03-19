@@ -6,7 +6,9 @@
 #include <lotto/base/context.h>
 #include <lotto/check.h>
 #include <lotto/engine/catmgr.h>
+#include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress.h>
+#include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/mediator.h>
 #include <lotto/runtime/runtime.h>
 #include <lotto/sys/assert.h>
@@ -19,6 +21,8 @@
 static bool _lotto_initialized = false;
 static void _intercept_return_resume(mediator_t *m, context_t *ctx);
 static void _intercept_resume(mediator_t *m, context_t *ctx);
+static context_t _bridge_ingress_event(const context_t *origin, type_id type,
+                                       const capture_point *cp);
 
 bool
 _lotto_loaded(void)
@@ -141,6 +145,14 @@ runtime_ingress(context_t *ctx)
         _intercept_resume(m, ctx);
 }
 
+void
+runtime_ingress_event(const context_t *origin, type_id type,
+                      const capture_point *cp)
+{
+    context_t ctx = _bridge_ingress_event(origin, type, cp);
+    runtime_ingress(&ctx);
+}
+
 
 // normalized runtime ingress for blocking calls
 mediator_t *
@@ -158,6 +170,14 @@ runtime_ingress_before(context_t *ctx)
     return m;
 }
 
+mediator_t *
+runtime_ingress_event_before(const context_t *origin, type_id type,
+                             const capture_point *cp)
+{
+    context_t ctx = _bridge_ingress_event(origin, type, cp);
+    return runtime_ingress_before(&ctx);
+}
+
 void
 runtime_ingress_after(context_t *ctx)
 {
@@ -170,6 +190,14 @@ runtime_ingress_after(context_t *ctx)
 
     logger_debugf("[%lu] after call  '%s'\n", m->id, ctx->func);
     _intercept_return_resume(m, ctx);
+}
+
+void
+runtime_ingress_event_after(const context_t *origin, type_id type,
+                            const capture_point *cp)
+{
+    context_t ctx = _bridge_ingress_event(origin, type, cp);
+    runtime_ingress_after(&ctx);
 }
 
 void _lotto_enable_unregistered();
@@ -224,4 +252,85 @@ lotto_intercept_fini()
     for (int i = 0; i < _fini_cnt; ++i) {
         _fini[i]();
     }
+}
+
+static context_t
+_bridge_ingress_event(const context_t *origin, type_id type,
+                      const capture_point *cp)
+{
+    ASSERT(origin != NULL);
+    ASSERT(cp != NULL);
+
+    context_t ctx = *origin;
+    ctx.type      = type;
+    ctx.src_type  = cp->src_type;
+    ctx.cp        = (capture_point *)cp;
+
+    switch (type) {
+        case EVENT_KEY_CREATE: {
+            capture_key_create_event *ev = cp->key_create;
+            ASSERT(ev != NULL);
+            ctx.cat     = CAT_KEY_CREATE;
+            ctx.args[0] = arg_ptr(ev->key);
+            ctx.args[1] = arg_ptr(ev->destructor);
+            break;
+        }
+        case EVENT_TASK_INIT: {
+            capture_task_init_event *ev = cp->task_init;
+            ASSERT(ev != NULL);
+            ctx.cat     = CAT_TASK_INIT;
+            ctx.args[0] = arg(uintptr_t, ev->thread);
+            ctx.args[1] = arg(bool, ev->detached);
+            break;
+        }
+        case EVENT_TASK_FINI: {
+            capture_task_fini_event *ev = cp->task_fini;
+            ASSERT(ev != NULL);
+            ctx.cat     = CAT_TASK_FINI;
+            ctx.args[0] = arg_ptr(ev->ptr);
+            break;
+        }
+        case EVENT_TASK_CREATE: {
+            capture_task_create_event *ev = cp->task_create;
+            ASSERT(ev != NULL || cp->payload == NULL);
+            ctx.cat = CAT_TASK_CREATE;
+            if (ev != NULL) {
+                ctx.args[0] = arg_ptr(ev->thread);
+                ctx.args[1] = arg_ptr(ev->attr);
+                ctx.args[2] = arg_ptr(ev->run);
+            }
+            break;
+        }
+        case EVENT_CALL:
+            ctx.cat = CAT_CALL;
+            break;
+        case EVENT_TASK_DETACH: {
+            capture_task_detach_event *ev = cp->task_detach;
+            ASSERT(ev != NULL);
+            ctx.cat     = CAT_DETACH;
+            ctx.args[0] = arg(uint64_t, ev->thread);
+            ctx.args[1] = arg_ptr(ev->ret);
+            break;
+        }
+        case EVENT_KEY_DELETE: {
+            capture_key_delete_event *ev = cp->key_delete;
+            ASSERT(ev != NULL);
+            ctx.cat     = CAT_KEY_DELETE;
+            ctx.args[0] = arg_ptr(&ev->key);
+            break;
+        }
+        case EVENT_SET_SPECIFIC: {
+            capture_set_specific_event *ev = cp->set_specific;
+            ASSERT(ev != NULL);
+            ctx.cat     = CAT_SET_SPECIFIC;
+            ctx.args[0] = arg_ptr(&ev->key);
+            ctx.args[1] = arg_ptr(ev->value);
+            break;
+        }
+        default:
+            logger_fatalf("unexpected ingress event type: %u\n", type);
+            break;
+    }
+
+    return ctx;
 }

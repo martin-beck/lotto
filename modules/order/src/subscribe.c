@@ -80,35 +80,26 @@ PS_SUBSCRIBE(CAPTURE_AFTER, EVENT_ORDER, {
 PS_SUBSCRIBE(CHAIN_INGRESS_BEFORE, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
 
     if (cp->src_type != EVENT_ORDER) {
         return PS_OK;
     }
 
     order_event_t *ev = cp->payload;
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
-    ctx.cat      = CAT_CALL;
-    ctx.args[0]  = arg(uint64_t, ev->order);
-    runtime_ingress_before(&ctx);
+    (void)runtime_ingress_module_submit_before_args(
+        origin, cp, CAT_CALL, arg(uint64_t, ev->order), (arg_t){0},
+        (arg_t){0}, (arg_t){0});
     return PS_OK;
 })
 
 PS_SUBSCRIBE(CHAIN_INGRESS_AFTER, EVENT_MODULE_INTERCEPT, {
     const context_t *origin = (const context_t *)md;
     capture_point *cp       = (capture_point *)event;
-    context_t ctx;
 
     if (cp->src_type != EVENT_ORDER) {
         return PS_OK;
     }
 
-    ctx          = *origin;
-    ctx.type     = EVENT_MODULE_INTERCEPT;
-    ctx.src_type = cp->src_type;
-    ctx.cat      = CAT_CALL;
-    runtime_ingress_after(&ctx);
+    runtime_ingress_module_submit_after(origin, cp, CAT_CALL);
     return PS_OK;
 })
