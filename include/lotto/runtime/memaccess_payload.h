@@ -131,8 +131,7 @@ _context_memaccess_equal(size_t size, uint64_t lhs, uint64_t rhs)
 
 static inline context_memaccess_event_t
 context_memaccess_event_from_source(type_id src_type, const void *payload,
-                                    context_phase_t phase,
-                                    category_t phase_cat)
+                                    context_phase_t phase)
 {
     switch (src_type) {
         case EVENT_MA_READ:
@@ -167,6 +166,25 @@ context_memaccess_event_from_source(type_id src_type, const void *payload,
                                                   CONTEXT_MA_BEFORE_FENCE;
         default:
             return CONTEXT_MA_NONE;
+    }
+}
+
+static inline context_phase_t
+context_memaccess_default_phase(type_id src_type)
+{
+    switch (src_type) {
+        case EVENT_MA_READ:
+        case EVENT_MA_WRITE:
+        case EVENT_MA_AREAD:
+        case EVENT_MA_AWRITE:
+        case EVENT_MA_RMW:
+        case EVENT_MA_XCHG:
+        case EVENT_MA_CMPXCHG:
+        case EVENT_MA_CMPXCHG_WEAK:
+        case EVENT_MA_FENCE:
+            return CONTEXT_PHASE_BEFORE;
+        default:
+            return CONTEXT_PHASE_EVENT;
     }
 }
 
@@ -249,60 +267,13 @@ context_memaccess_event(const context_t *ctx)
     }
     if (context_has_capture_point(ctx)) {
         context_phase_t phase = ctx->phase;
-        category_t phase_cat = context_memaccess_phase_category(ctx->type);
-        if (phase_cat == CAT_NONE) {
-            phase_cat = context_compat_category(ctx);
-        }
         if (phase == CONTEXT_PHASE_EVENT) {
-            phase = phase_cat == CAT_NONE || phase_cat == CAT_BEFORE_READ ||
-                            phase_cat == CAT_BEFORE_WRITE ||
-                            phase_cat == CAT_BEFORE_AREAD ||
-                            phase_cat == CAT_BEFORE_AWRITE ||
-                            phase_cat == CAT_BEFORE_RMW ||
-                            phase_cat == CAT_BEFORE_XCHG ||
-                            phase_cat == CAT_BEFORE_CMPXCHG ||
-                            phase_cat == CAT_BEFORE_FENCE ?
-                        CONTEXT_PHASE_BEFORE :
-                        CONTEXT_PHASE_AFTER;
+            phase = context_memaccess_default_phase(context_event_type(ctx));
         }
         return context_memaccess_event_from_source(context_event_type(ctx),
-                                                   ctx->cp->payload, phase,
-                                                   phase_cat);
+                                                   ctx->cp->payload, phase);
     }
-    switch (context_compat_category(ctx)) {
-        case CAT_BEFORE_READ:
-            return CONTEXT_MA_BEFORE_READ;
-        case CAT_BEFORE_WRITE:
-            return CONTEXT_MA_BEFORE_WRITE;
-        case CAT_BEFORE_AREAD:
-            return CONTEXT_MA_BEFORE_AREAD;
-        case CAT_BEFORE_AWRITE:
-            return CONTEXT_MA_BEFORE_AWRITE;
-        case CAT_BEFORE_RMW:
-            return CONTEXT_MA_BEFORE_RMW;
-        case CAT_BEFORE_XCHG:
-            return CONTEXT_MA_BEFORE_XCHG;
-        case CAT_BEFORE_CMPXCHG:
-            return CONTEXT_MA_BEFORE_CMPXCHG;
-        case CAT_BEFORE_FENCE:
-            return CONTEXT_MA_BEFORE_FENCE;
-        case CAT_AFTER_AREAD:
-            return CONTEXT_MA_AFTER_AREAD;
-        case CAT_AFTER_AWRITE:
-            return CONTEXT_MA_AFTER_AWRITE;
-        case CAT_AFTER_RMW:
-            return CONTEXT_MA_AFTER_RMW;
-        case CAT_AFTER_XCHG:
-            return CONTEXT_MA_AFTER_XCHG;
-        case CAT_AFTER_CMPXCHG_S:
-            return CONTEXT_MA_AFTER_CMPXCHG_S;
-        case CAT_AFTER_CMPXCHG_F:
-            return CONTEXT_MA_AFTER_CMPXCHG_F;
-        case CAT_AFTER_FENCE:
-            return CONTEXT_MA_AFTER_FENCE;
-        default:
-            return CONTEXT_MA_NONE;
-    }
+    return CONTEXT_MA_NONE;
 }
 
 static inline category_t

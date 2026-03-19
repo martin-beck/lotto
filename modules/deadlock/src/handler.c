@@ -314,7 +314,7 @@ _deadlock_handle(const context_t *ctx, event_t *e)
                     }
                     break;
                 case CONTEXT_MUTEX_NONE:
-                    if (ctx->cat == CAT_RSRC_ACQUIRING) {
+                    if (context_has_event_type(ctx, EVENT_RSRC_ACQUIRING)) {
                         uintptr_t addr =
                             (uintptr_t)((rsrc_event_t *)ctx->cp->payload)->addr;
                         if (_check_deadlock(tid, addr)) {
@@ -323,12 +323,12 @@ _deadlock_handle(const context_t *ctx, event_t *e)
                         if (_is_lost(tid, addr)) {
                             e->reason = REASON_RSRC_DEADLOCK;
                         }
-                    } else if (ctx->cat == CAT_RSRC_RELEASED) {
+                    } else if (context_has_event_type(ctx, EVENT_RSRC_RELEASED)) {
                         if (!_released(
                                 tid, (uintptr_t)((rsrc_event_t *)ctx->cp->payload)->addr)) {
                             e->reason = REASON_RSRC_DEADLOCK;
                         }
-                    } else if (ctx->cat == CAT_TASK_FINI) {
+                    } else if (context_is_task_fini(ctx)) {
                         if (_mark_lost(tid)) {
                             e->reason = REASON_RSRC_DEADLOCK;
                         }
@@ -336,21 +336,12 @@ _deadlock_handle(const context_t *ctx, event_t *e)
                     break;
             }
             if (context_mutex_event(ctx) == CONTEXT_MUTEX_NONE &&
-                ctx->cat == CAT_TASK_FINI) {
+                context_is_task_fini(ctx)) {
                 /* handled above */
             } else if (context_mutex_event(ctx) == CONTEXT_MUTEX_NONE &&
-                       ctx->cat != CAT_RSRC_ACQUIRING &&
-                       ctx->cat != CAT_RSRC_RELEASED &&
-                       ctx->cat != CAT_TASK_FINI) {
-                switch (ctx->cat) {
-                case CAT_TASK_FINI:
-                    if (_mark_lost(tid)) {
-                        e->reason = REASON_RSRC_DEADLOCK;
-                    }
-                    break;
-                default:
-                    break;
-                }
+                       !context_has_event_type(ctx, EVENT_RSRC_ACQUIRING) &&
+                       !context_has_event_type(ctx, EVENT_RSRC_RELEASED) &&
+                       !context_is_task_fini(ctx)) {
             }
             break;
     }

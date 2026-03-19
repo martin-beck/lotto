@@ -54,11 +54,18 @@
 
 (define (make-context cat id)
   (let ([ctx (alloc-context)])
+    (call sys_memset ctx 0 (ctype-sizeof _context))
     (set-context-self! ctx #f)
-    (set-context-type! ctx 0)
+    (set-context-type! ctx
+                       (match cat
+                         ['CAT_TASK_CREATE 172]
+                         ['CAT_TASK_INIT 170]
+                         ['CAT_TASK_FINI 171]
+                         ['CAT_TASK_BLOCK 197]
+                         ['CAT_CALL 173]
+                         [_ 0]))
     (set-context-src_type! ctx 0)
     (set-context-cp! ctx #f)
-    (set-context-phase! ctx 'CONTEXT_PHASE_EVENT)
     (set-context-id! ctx id)
     (set-context-cat! ctx cat)
     (set-context-func! ctx "func")

@@ -9,11 +9,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <dice/events/pthread.h>
 #include <lotto/base/context.h>
 #include <lotto/runtime/capture_point.h>
 #include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/memaccess_payload.h>
-#include <lotto/runtime/module_event_category.h>
+#include <lotto/runtime/module_events.h>
 
 typedef enum context_core_event {
     CONTEXT_CORE_NONE = 0,
@@ -57,27 +58,7 @@ context_core_event(const context_t *ctx)
                 break;
         }
     }
-
-    switch (context_compat_category(ctx)) {
-        case CAT_TASK_CREATE:
-            return CONTEXT_CORE_TASK_CREATE;
-        case CAT_CALL:
-            return CONTEXT_CORE_CALL;
-        case CAT_TASK_INIT:
-            return CONTEXT_CORE_TASK_INIT;
-        case CAT_TASK_FINI:
-            return CONTEXT_CORE_TASK_FINI;
-        case CAT_DETACH:
-            return CONTEXT_CORE_TASK_DETACH;
-        case CAT_KEY_CREATE:
-            return CONTEXT_CORE_KEY_CREATE;
-        case CAT_KEY_DELETE:
-            return CONTEXT_CORE_KEY_DELETE;
-        case CAT_SET_SPECIFIC:
-            return CONTEXT_CORE_SET_SPECIFIC;
-        default:
-            return CONTEXT_CORE_NONE;
-    }
+    return CONTEXT_CORE_NONE;
 }
 
 static inline category_t
@@ -145,6 +126,62 @@ context_semantic_category(type_id type)
             return CAT_FUNC_ENTRY;
         case EVENT_FUNC_EXIT:
             return CAT_FUNC_EXIT;
+        case EVENT_REGION_IN:
+            return CAT_REGION_IN;
+        case EVENT_REGION_OUT:
+            return CAT_REGION_OUT;
+        case EVENT_MUTEX_ACQUIRE:
+            return CAT_MUTEX_ACQUIRE;
+        case EVENT_MUTEX_TRYACQUIRE:
+            return CAT_MUTEX_TRYACQUIRE;
+        case EVENT_MUTEX_RELEASE:
+            return CAT_MUTEX_RELEASE;
+        case EVENT_EVEC_PREPARE:
+            return CAT_EVEC_PREPARE;
+        case EVENT_EVEC_WAIT:
+            return CAT_EVEC_WAIT;
+        case EVENT_EVEC_TIMED_WAIT:
+            return CAT_EVEC_TIMED_WAIT;
+        case EVENT_EVEC_CANCEL:
+            return CAT_EVEC_CANCEL;
+        case EVENT_EVEC_WAKE:
+            return CAT_EVEC_WAKE;
+        case EVENT_EVEC_MOVE:
+            return CAT_EVEC_MOVE;
+        case EVENT_RWLOCK_RDLOCK:
+        case EVENT_RWLOCK_TIMEDRDLOCK:
+            return CAT_RWLOCK_RDLOCK;
+        case EVENT_RWLOCK_WRLOCK:
+        case EVENT_RWLOCK_TIMEDWRLOCK:
+            return CAT_RWLOCK_WRLOCK;
+        case EVENT_RWLOCK_UNLOCK:
+            return CAT_RWLOCK_UNLOCK;
+        case EVENT_RWLOCK_TRYRDLOCK:
+            return CAT_RWLOCK_TRYRDLOCK;
+        case EVENT_RWLOCK_TRYWRLOCK:
+            return CAT_RWLOCK_TRYWRLOCK;
+        case EVENT_RSRC_ACQUIRING:
+            return CAT_RSRC_ACQUIRING;
+        case EVENT_RSRC_RELEASED:
+            return CAT_RSRC_RELEASED;
+        case EVENT_SCHED_YIELD:
+        case EVENT_USER_YIELD:
+            return CAT_USER_YIELD;
+        case EVENT_SYS_YIELD:
+        case EVENT_TIME_YIELD:
+            return CAT_SYS_YIELD;
+        case EVENT_POLL:
+            return CAT_POLL;
+        case EVENT_TASK_VELOCITY:
+            return CAT_TASK_VELOCITY;
+        case EVENT_TASK_JOIN:
+            return CAT_JOIN;
+        case EVENT_REGION_PREEMPTION:
+            return CAT_REGION_PREEMPTION;
+        case EVENT_ORDER:
+        case EVENT_FORK_EXECVE:
+        case EVENT_CXA_GUARD_CALL:
+            return CAT_CALL;
         default:
             return CAT_NONE;
     }
@@ -163,7 +200,7 @@ context_event_category(type_id type)
         return cat;
     }
 
-    return context_module_category(type);
+    return CAT_NONE;
 }
 
 static inline category_t
@@ -188,23 +225,22 @@ context_effective_category(const context_t *ctx)
 }
 
 static inline context_t
-context_finalize_category(context_t ctx, category_t fallback_cat)
+context_finalize_category(context_t ctx)
 {
     if (ctx.cat == CAT_NONE) {
         type_id type   = ctx.type != 0 ? ctx.type : ctx.src_type;
         category_t cat = context_event_category(type);
-        ctx.cat = cat != CAT_NONE ? cat : fallback_cat;
+        ctx.cat = cat;
     }
     return ctx;
 }
 
 static inline context_t
-context_with_types(context_t ctx, type_id type, type_id src_type,
-                   category_t fallback_cat)
+context_with_types(context_t ctx, type_id type, type_id src_type)
 {
     ctx.type     = type;
     ctx.src_type = src_type;
-    return context_finalize_category(ctx, fallback_cat);
+    return context_finalize_category(ctx);
 }
 
 static inline bool

@@ -25,24 +25,6 @@
 #include <lotto/runtime/ingress_events.h>
 #include <lotto/sys/logger.h>
 
-#if 0
-int detachstate;
-if (attr == NULL) {
-    detachstate = PTHREAD_CREATE_JOINABLE;
-} else {
-    ENSURE(pthread_attr_getdetachstate(attr, &detachstate) == 0);
-}
-(void)runtime_ingress(ctx(.func = __FUNCTION__, .cat = CAT_TASK_INIT,
-                            .args = {arg(uint64_t, pthread_self()),
-                                     arg(bool, detachstate ==
-                                                   PTHREAD_CREATE_DETACHED)}));
-void *ret = _run(_arg);
-return ret;
-}
-
-#endif
-
-
 // -----------------------------------------------------------------------------
 // thread_start and thread_exit
 // -----------------------------------------------------------------------------

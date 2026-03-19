@@ -32,5 +32,7 @@
 #define EVENT_AFTER_FENCE      191
 #define EVENT_FUNC_ENTRY       192
 #define EVENT_FUNC_EXIT        193
+#define EVENT_REGION_IN        198
+#define EVENT_REGION_OUT       199
 
 #endif

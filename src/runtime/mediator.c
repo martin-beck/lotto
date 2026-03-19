@@ -353,13 +353,6 @@ mediator_capture(mediator_t *m, context_t *ctx)
     return true;
 }
 
-bool
-mediator_capture_ingress(mediator_t *m, const ingress_capture *capture)
-{
-    context_t ctx = _context_from_capture(capture);
-    return mediator_capture(m, &ctx);
-}
-
 static inline bool
 _guard_resume(mediator_t *m)
 {
@@ -412,13 +405,6 @@ mediator_resume(mediator_t *m, context_t *ctx)
     return st;
 }
 
-mediator_status_t
-mediator_resume_ingress(mediator_t *m, const ingress_capture *capture)
-{
-    context_t ctx = _context_from_capture(capture);
-    return mediator_resume(m, &ctx);
-}
-
 static inline bool
 _should_resume(const mediator_t *m)
 {
@@ -450,13 +436,6 @@ mediator_return(mediator_t *m, context_t *ctx)
     ASSERT(plan_next(m->plan) == ACTION_RETURN);
     engine_return(ctx);
     plan_done(&m->plan);
-}
-
-void
-mediator_return_ingress(mediator_t *m, const ingress_capture *capture)
-{
-    context_t ctx = _context_from_capture(capture);
-    mediator_return(m, &ctx);
 }
 
 void

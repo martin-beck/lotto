@@ -24,14 +24,6 @@ context_join_event(const context_t *ctx)
         case EVENT_TASK_JOIN:
             return CONTEXT_JOIN_JOIN;
         default:
-            break;
-    }
-    switch (context_compat_category(ctx)) {
-        case CAT_JOIN:
-            return CONTEXT_JOIN_JOIN;
-        case CAT_EXIT:
-            return CONTEXT_JOIN_EXIT;
-        default:
             return CONTEXT_JOIN_NONE;
     }
 }

@@ -40,22 +40,6 @@ context_evec_event(const context_t *ctx)
         case EVENT_EVEC_MOVE:
             return CONTEXT_EVEC_MOVE;
         default:
-            break;
-    }
-    switch (context_compat_category(ctx)) {
-        case CAT_EVEC_PREPARE:
-            return CONTEXT_EVEC_PREPARE;
-        case CAT_EVEC_WAIT:
-            return CONTEXT_EVEC_WAIT;
-        case CAT_EVEC_TIMED_WAIT:
-            return CONTEXT_EVEC_TIMED_WAIT;
-        case CAT_EVEC_CANCEL:
-            return CONTEXT_EVEC_CANCEL;
-        case CAT_EVEC_WAKE:
-            return CONTEXT_EVEC_WAKE;
-        case CAT_EVEC_MOVE:
-            return CONTEXT_EVEC_MOVE;
-        default:
             return CONTEXT_EVEC_NONE;
     }
 }

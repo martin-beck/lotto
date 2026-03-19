@@ -16,7 +16,6 @@ typedef struct ingress_capture {
     type_id src_type;
     const capture_point *cp;
     context_phase_t phase;
-    category_t fallback_cat;
 } ingress_capture;
 
 static inline context_t
@@ -42,27 +41,24 @@ runtime_context_from_origin(const context_origin *origin)
 static inline ingress_capture
 runtime_ingress_capture_base_phase(const context_origin *origin, type_id type,
                                    const capture_point *cp,
-                                   context_phase_t phase,
-                                   category_t fallback_cat)
+                                   context_phase_t phase)
 {
     ASSERT(origin != NULL);
     return (ingress_capture){
-        .origin       = *origin,
-        .type         = type,
-        .src_type     = cp != NULL ? cp->src_type : type,
-        .cp           = cp,
-        .phase        = phase,
-        .fallback_cat = fallback_cat,
+        .origin   = *origin,
+        .type     = type,
+        .src_type = cp != NULL ? cp->src_type : type,
+        .cp       = cp,
+        .phase    = phase,
     };
 }
 
 static inline ingress_capture
 runtime_ingress_capture_base(const context_origin *origin, type_id type,
-                             const capture_point *cp, category_t fallback_cat)
+                             const capture_point *cp)
 {
     return runtime_ingress_capture_base_phase(origin, type, cp,
-                                              CONTEXT_PHASE_EVENT,
-                                              fallback_cat);
+                                              CONTEXT_PHASE_EVENT);
 }
 
 static inline ingress_capture
@@ -70,7 +66,7 @@ runtime_ingress_capture_synthetic(const char *func, type_id type)
 {
     return runtime_ingress_capture_base(
         &(context_origin){.id = NO_TASK, .vid = NO_TASK, .func = func}, type,
-        NULL, CAT_NONE);
+        NULL);
 }
 
 static inline context_t
@@ -82,7 +78,7 @@ runtime_context_from_ingress_capture(const ingress_capture *capture)
     ctx.type      = capture->type;
     ctx.src_type  = capture->src_type;
     ctx.phase     = capture->phase;
-    return context_finalize_category(ctx, capture->fallback_cat);
+    return context_finalize_category(ctx);
 }
 
 static inline context_t

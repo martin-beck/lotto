@@ -37,7 +37,8 @@ udf_decode_reg(context_t *ctx, struct qemu_plugin_insn *insn)
     ASSERT(0 == (opcode & UDF_MASK));
     switch (opcode) {
         case LOTTO_YIELD_A64_VAL:
-            qlotto_context_set_semantics(ctx, CAT_SYS_YIELD);
+            qlotto_context_set_event(ctx, EVENT_SYS_YIELD, EVENT_SYS_YIELD,
+                                     CONTEXT_PHASE_EVENT);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_QEMUQUIT_A64_VAL:
@@ -68,11 +69,15 @@ udf_decode_reg(context_t *ctx, struct qemu_plugin_insn *insn)
 
         // Guest lock actions
         case LOTTO_LOCK_ACQ_A64_VAL:
-            qlotto_context_set_semantics(ctx, CAT_RSRC_ACQUIRING);
+            qlotto_context_set_event(ctx, EVENT_RSRC_ACQUIRING,
+                                     EVENT_RSRC_ACQUIRING,
+                                     CONTEXT_PHASE_BEFORE);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_LOCK_REL_A64_VAL:
-            qlotto_context_set_semantics(ctx, CAT_RSRC_RELEASED);
+            qlotto_context_set_event(ctx, EVENT_RSRC_RELEASED,
+                                     EVENT_RSRC_RELEASED,
+                                     CONTEXT_PHASE_AFTER);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_LOCK_TRYACQ_A64_VAL:
@@ -82,11 +87,13 @@ udf_decode_reg(context_t *ctx, struct qemu_plugin_insn *insn)
 
         // Lotto Region
         case LOTTO_REGION_IN_VAL:
-            qlotto_context_set_semantics(ctx, CAT_REGION_IN);
+            qlotto_context_set_event(ctx, EVENT_REGION_IN, EVENT_REGION_IN,
+                                     CONTEXT_PHASE_EVENT);
             register_insn_cb(ctx, insn);
             break;
         case LOTTO_REGION_OUT_VAL:
-            qlotto_context_set_semantics(ctx, CAT_REGION_OUT);
+            qlotto_context_set_event(ctx, EVENT_REGION_OUT, EVENT_REGION_OUT,
+                                     CONTEXT_PHASE_EVENT);
             register_insn_cb(ctx, insn);
             break;
 
@@ -95,11 +102,11 @@ udf_decode_reg(context_t *ctx, struct qemu_plugin_insn *insn)
             break;
 
         case LOTTO_TRACE_START_VAL:
-            qlotto_context_set_semantics(ctx, CAT_NONE);
+            qlotto_context_set_event(ctx, 0, 0, CONTEXT_PHASE_EVENT);
             register_trace_start_cb(ctx, insn);
             break;
         case LOTTO_TRACE_END_VAL:
-            qlotto_context_set_semantics(ctx, CAT_NONE);
+            qlotto_context_set_event(ctx, 0, 0, CONTEXT_PHASE_EVENT);
             register_trace_end_cb(ctx, insn);
             break;
 
@@ -141,15 +148,24 @@ void
 set_ctx_by_insn(context_t *ctx, cs_insn *insn_cs, struct qemu_plugin_insn *insn,
                 uint64_t pc)
 {
-    qlotto_context_set_semantics(ctx, mapping_arm64[insn_cs->id]);
-    ctx->func = mapping_cat[ctx->cat].func;
+    category_t mapped_cat = mapping_arm64[insn_cs->id];
+    switch (mapped_cat) {
+        case CAT_EXTRA_HS_CALL:
+        case CAT_EXTRA_WF:
+            qlotto_context_set_event(ctx, EVENT_SYS_YIELD, EVENT_SYS_YIELD,
+                                     CONTEXT_PHASE_EVENT);
+            break;
+        case CAT_EXTRA_UDF:
+            qlotto_context_set_event(ctx, 0, 0, CONTEXT_PHASE_EVENT);
+            break;
+        default:
+            qlotto_context_set_semantics(ctx, mapped_cat);
+            break;
+    }
+    ctx->func = mapping_cat[mapped_cat].func;
 
-    if (mapping_cat[ctx->cat].cb != NULL) {
-        int cat_tmp = ctx->cat;
-        if (cat_tmp > CAT_END_) {
-            ctx->cat = cat_extra_mapping[ctx->cat];
-        }
-        mapping_cat[cat_tmp].cb(ctx, insn);
+    if (mapping_cat[mapped_cat].cb != NULL) {
+        mapping_cat[mapped_cat].cb(ctx, insn);
         return;
     }
 
@@ -217,7 +233,8 @@ do_disasm_reg(struct qemu_plugin_insn *insn)
     if (event != NULL) {
         context_t *ctx = (context_t *)sys_malloc(sizeof(context_t));
         *ctx           = (context_t){0};
-        qlotto_context_set_semantics(ctx, event->cat);
+        qlotto_context_set_event(ctx, event->type, event->type,
+                                 CONTEXT_PHASE_EVENT);
         // Inform Lotto about guest function name
         ctx->func = event->func_name;
         ctx->pc   = pc;

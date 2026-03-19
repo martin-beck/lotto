@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <dice/events/memaccess.h>
 #include <lotto/base/cappt.h>
 #include <lotto/base/context.h>
 #include <lotto/base/trace_flat.h>
@@ -11,11 +12,16 @@
 #include <lotto/engine/recorder.h>
 #include <lotto/engine/sequencer.h>
 #include <lotto/engine/statemgr.h>
+#include <lotto/runtime/ingress_events.h>
 
 // NOLINTBEGIN(bugprone-suspicious-memory-comparison)
 
 #define new_ctx(...)                                                           \
     (&(context_t){.func = "UNKNOWN",                                           \
+                  .type = 0,                                                   \
+                  .src_type = 0,                                               \
+                  .cp   = NULL,                                                \
+                  .phase = CONTEXT_PHASE_EVENT,                                \
                   .cat  = CAT_NONE,                                            \
                   .id   = NO_TASK,                                             \
                   __VA_ARGS__})
@@ -199,7 +205,7 @@ test_main_task()
     printf("Test: %s\n", __FUNCTION__);
     task_id tid = 1;
 
-    context_t *ctx = new_ctx(.id = tid, .cat = CAT_TASK_INIT);
+    context_t *ctx = new_ctx(.id = tid, .type = EVENT_TASK_INIT);
     expect_process(ctx, false);
     mock.next  = tid;
     mock.now   = 5 * NOW_SECOND;
@@ -249,7 +255,7 @@ test_replay()
     trace_append(t, r);
 
     /* capture point 1 */
-    ctx_tid = new_ctx(.id = tid, .cat = CAT_TASK_INIT);
+    ctx_tid = new_ctx(.id = tid, .type = EVENT_TASK_INIT);
     expect_process(ctx_tid, false);
     plan = sequencer_capture(ctx_tid);
     assert(plan.next == tid);
@@ -260,7 +266,8 @@ test_replay()
     assert(!expect_marshaled());
 
     /* capture point 2 */
-    ctx_tid = new_ctx(.id = tid, .cat = CAT_BEFORE_WRITE);
+    ctx_tid = new_ctx(.id = tid, .phase = CONTEXT_PHASE_BEFORE,
+                      .type = EVENT_BEFORE_WRITE, .src_type = EVENT_MA_WRITE);
     expect_process(ctx_tid, false);
     mock.next = ANY_TASK;
     plan      = sequencer_capture(ctx_tid);
@@ -274,11 +281,13 @@ test_replay()
     assert(!expect_marshaled());
 
     /* capture point 3 */
-    ctx_tid = new_ctx(.id = tid, .cat = CAT_BEFORE_AREAD);
+    ctx_tid = new_ctx(.id = tid, .phase = CONTEXT_PHASE_BEFORE,
+                      .type = EVENT_BEFORE_AREAD, .src_type = EVENT_MA_AREAD);
     expect_process(ctx_tid, false);
     plan = sequencer_capture(ctx_tid);
     assert(plan.next == other);
-    ctx_other = new_ctx(.id = other, .cat = CAT_BEFORE_AREAD);
+    ctx_other = new_ctx(.id = other, .phase = CONTEXT_PHASE_BEFORE,
+                        .type = EVENT_BEFORE_AREAD, .src_type = EVENT_MA_AREAD);
     sequencer_resume(ctx_other);
     assert(plan.actions == (ACTION_WAKE | ACTION_YIELD | ACTION_RESUME));
     assert(trace_last(t) == NULL);
@@ -289,7 +298,8 @@ test_replay()
 
 
     /* replay is over now it should call scheduler_process */
-    ctx_other = new_ctx(.id = other, .cat = CAT_BEFORE_AREAD);
+    ctx_other = new_ctx(.id = other, .phase = CONTEXT_PHASE_BEFORE,
+                        .type = EVENT_BEFORE_AREAD, .src_type = EVENT_MA_AREAD);
     expect_process(ctx_other, false);
     mock.next = tid;
 
@@ -327,7 +337,7 @@ test_record()
     // LOTTO_PUBLISH(FLAG_CLI_REPLAY_GOAL, val);
 
     /* send last event */
-    ctx = new_ctx(.id = tid, .cat = CAT_TASK_FINI);
+    ctx = new_ctx(.id = tid, .type = EVENT_TASK_FINI);
     expect_process(ctx, false);
     mock.next = ANY_TASK;
     r         = record_alloc(0);
@@ -349,7 +359,7 @@ test_record()
 
 
     /* send another last event */
-    ctx = new_ctx(.id = other, .cat = CAT_TASK_FINI);
+    ctx = new_ctx(.id = other, .type = EVENT_TASK_FINI);
     expect_process(ctx, false);
     mock.next = ANY_TASK;
     plan      = sequencer_capture(ctx);

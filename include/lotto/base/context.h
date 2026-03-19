@@ -117,7 +117,6 @@ context_compat_category(const context_t *ctx)
                       ((uintptr_t)__builtin_frame_address(CTX_LEVELS)),        \
                   __VA_ARGS__})
 
-#define ctx_cat(ctx, c)       ((ctx)->cat = c, ctx)
 #define ctx_types(ctx, t, st) ((ctx)->type = (t), (ctx)->src_type = (st), ctx)
 
 #define ctx_empty (&(context_t){0})

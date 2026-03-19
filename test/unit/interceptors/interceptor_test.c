@@ -11,6 +11,7 @@
 #include <lotto/engine/catmgr.h>
 #include <lotto/engine/dispatcher.h>
 #include <lotto/engine/pubsub.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/ingress.h>
 #include <lotto/runtime/mediator.h>
 #include <lotto/states/handlers/deadlock.h>
@@ -161,21 +162,22 @@ prng_next(void)
 bool
 mediator_capture(mediator_t *m, context_t *ctx)
 {
-    printf("intercept %s cat: %s\n", ctx->func, category_str(ctx->cat));
+    printf("intercept %s cat: %s\n", ctx->func,
+           category_str(context_effective_category(ctx)));
     static int calls = 0;
     switch (calls++) {
         case 0:
-            ENSURE(ctx->cat == CAT_TASK_INIT);
+            ENSURE(context_effective_category(ctx) == CAT_TASK_INIT);
             return false;
         case 1:
-            ENSURE(ctx->cat == CAT_RSRC_ACQUIRING);
+            ENSURE(context_effective_category(ctx) == CAT_RSRC_ACQUIRING);
             m->plan = (plan_t){
                 .next    = ctx->id,
                 .actions = ACTION_CONTINUE,
             };
             return true;
         default:
-            ENSURE(ctx->cat == CAT_CALL);
+            ENSURE(context_effective_category(ctx) == CAT_CALL);
             m->plan = (plan_t){
                 .next    = ANY_TASK,
                 .actions = ACTION_RETURN | ACTION_YIELD | ACTION_RESUME,
@@ -191,18 +193,18 @@ mediator_resume(mediator_t *m, context_t *ctx)
     static unsigned int counter = 0;
     switch (counter++) {
         case 0:
-            ENSURE(ctx->cat == CAT_NONE);
+            ENSURE(context_effective_category(ctx) == CAT_NONE);
             return MEDIATOR_OK;
             break;
         case 1:
-            ENSURE(ctx->cat == CAT_TASK_INIT);
+            ENSURE(context_effective_category(ctx) == CAT_TASK_INIT);
             return MEDIATOR_OK;
             break;
         default:
             break;
     }
 
-    ENSURE(ctx->cat == CAT_CALL && "expecting CAT_CALL");
+    ENSURE(context_effective_category(ctx) == CAT_CALL && "expecting CAT_CALL");
     printf("return %s\n", ctx->func);
 
     ENSURE(plan_next(m->plan) == ACTION_YIELD && "wrong plan");
@@ -213,7 +215,8 @@ mediator_resume(mediator_t *m, context_t *ctx)
 void
 mediator_return(mediator_t *m, context_t *ctx)
 {
-    ENSURE(ctx->cat == CAT_CALL && "expecting CAT_CALL");
+    ENSURE(context_effective_category(ctx) == CAT_CALL &&
+           "expecting CAT_CALL");
     ENSURE(plan_next(m->plan) == ACTION_RETURN && "wrong plan");
     plan_done(&m->plan);
 }

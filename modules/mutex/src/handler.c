@@ -219,8 +219,9 @@ _mutex_handle(const context_t *ctx, event_t *e)
     }
 
     /* remove waiting tasks from the tset */
-    if (context_mutex_event(ctx) != CONTEXT_MUTEX_NONE &&
-        _remove_waiters(&e->tset, ctx->id) && mutex_config()->deadlock_check &&
+    bool should_wait = _remove_waiters(&e->tset, ctx->id);
+    if (context_mutex_event(ctx) != CONTEXT_MUTEX_NONE && should_wait &&
+        mutex_config()->deadlock_check &&
         _check_deadlock(ctx->id, context_mutex_addr(ctx), NO_TASK)) {
         logger_errorf("Aborting on deadlock\n");
         e->reason = REASON_RSRC_DEADLOCK;

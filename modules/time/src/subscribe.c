@@ -120,18 +120,12 @@ int
 nanosleep(const struct timespec *req, struct timespec *rem)
 {
     uint64_t cur_ns = clock_ns();
-
-    context_t ctx;
     uint64_t ns_start = cur_ns;
     uint64_t ns_end   = ns_start + ((req->tv_sec * NSEC_IN_SEC + req->tv_nsec) /
                                   (SLEEP_DIVISOR));
 
-    ctx.cat    = CAT_SYS_YIELD;
-    ctx.icount = 0;
-    ctx.func   = "nanosleep";
-
     while (cur_ns < ns_end) {
-        intercept_time_yield(ctx.func);
+        intercept_time_yield("nanosleep");
         cur_ns = clock_ns();
     }
     return 0;
@@ -141,17 +135,11 @@ int
 usleep(useconds_t usec)
 {
     uint64_t cur_ns = clock_ns();
-
-    context_t ctx;
     uint64_t ns_start = cur_ns;
     uint64_t ns_end   = ns_start + ((usec * NSEC_IN_USEC) / (SLEEP_DIVISOR));
 
-    ctx.cat    = CAT_SYS_YIELD;
-    ctx.icount = 0;
-    ctx.func   = "usleep";
-
     while (cur_ns < ns_end) {
-        intercept_time_yield(ctx.func);
+        intercept_time_yield("usleep");
         cur_ns = clock_ns();
     }
     return 0;
@@ -161,17 +149,11 @@ unsigned int
 sleep(unsigned int seconds)
 {
     uint64_t cur_ns = clock_ns();
-
-    context_t ctx;
     uint64_t ns_start = cur_ns;
     uint64_t ns_end   = ns_start + ((seconds * NSEC_IN_SEC) / (SLEEP_DIVISOR));
 
-    ctx.cat    = CAT_SYS_YIELD;
-    ctx.icount = 0;
-    ctx.func   = "sleep";
-
     while (cur_ns < ns_end) {
-        intercept_time_yield(ctx.func);
+        intercept_time_yield("sleep");
         cur_ns = clock_ns();
     }
     return 0;

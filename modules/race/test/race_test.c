@@ -52,7 +52,6 @@ typedef struct {
         .vid = NO_TASK,                                                        \
         .pc = (PC),                                                            \
         .phase = CONTEXT_PHASE_BEFORE,                                         \
-        .cat = CAT_BEFORE_READ,                                                \
         .type = EVENT_BEFORE_READ, .src_type = EVENT_MA_READ,                  \
         .cp = &(capture_point){                                                \
             .src_type = EVENT_MA_READ,                                         \
@@ -67,7 +66,6 @@ typedef struct {
         .vid = NO_TASK,                                                        \
         .pc = (PC),                                                            \
         .phase = CONTEXT_PHASE_BEFORE,                                         \
-        .cat = CAT_BEFORE_WRITE,                                               \
         .type = EVENT_BEFORE_WRITE, .src_type = EVENT_MA_WRITE,                \
         .cp = &(capture_point){                                                \
             .src_type = EVENT_MA_WRITE,                                        \

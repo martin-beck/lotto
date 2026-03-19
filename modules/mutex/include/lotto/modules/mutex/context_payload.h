@@ -30,16 +30,6 @@ context_mutex_event(const context_t *ctx)
         case EVENT_MUTEX_RELEASE:
             return CONTEXT_MUTEX_RELEASE;
         default:
-            break;
-    }
-    switch (context_compat_category(ctx)) {
-        case CAT_MUTEX_ACQUIRE:
-            return CONTEXT_MUTEX_ACQUIRE;
-        case CAT_MUTEX_TRYACQUIRE:
-            return CONTEXT_MUTEX_TRYACQUIRE;
-        case CAT_MUTEX_RELEASE:
-            return CONTEXT_MUTEX_RELEASE;
-        default:
             return CONTEXT_MUTEX_NONE;
     }
 }

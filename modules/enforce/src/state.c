@@ -4,6 +4,7 @@
 #include <lotto/engine/catmgr.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/enforce/state.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/sys/logger_block.h>
 #include <lotto/util/macros.h>
 
@@ -35,7 +36,8 @@ static void
 _printm(const marshable_t *m)
 {
     logger_infof("id:   %lu\n", _state.ctx.id);
-    logger_infof("cat:  %s\n", category_str(_state.ctx.cat));
+    logger_infof("cat:  %s\n",
+                 category_str(context_effective_category(&_state.ctx)));
     logger_infof("pc:   %p\n", (void *)_state.ctx.pc);
     logger_infof("seed: %lu\n", _state.seed);
 }

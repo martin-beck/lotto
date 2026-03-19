@@ -27,14 +27,6 @@ context_yield_event(const context_t *ctx)
         case EVENT_SYS_YIELD:
             return CONTEXT_YIELD_SYS;
         default:
-            break;
-    }
-    switch (context_compat_category(ctx)) {
-        case CAT_USER_YIELD:
-            return CONTEXT_YIELD_USER;
-        case CAT_SYS_YIELD:
-            return CONTEXT_YIELD_SYS;
-        default:
             return CONTEXT_YIELD_NONE;
     }
 }

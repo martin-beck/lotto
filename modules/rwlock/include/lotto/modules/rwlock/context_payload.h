@@ -42,20 +42,6 @@ context_rwlock_event(const context_t *ctx)
         case EVENT_RWLOCK_TIMEDWRLOCK:
             return CONTEXT_RWLOCK_TIMEDWRLOCK;
         default:
-            break;
-    }
-    switch (context_compat_category(ctx)) {
-        case CAT_RWLOCK_RDLOCK:
-            return CONTEXT_RWLOCK_RDLOCK;
-        case CAT_RWLOCK_WRLOCK:
-            return CONTEXT_RWLOCK_WRLOCK;
-        case CAT_RWLOCK_UNLOCK:
-            return CONTEXT_RWLOCK_UNLOCK;
-        case CAT_RWLOCK_TRYRDLOCK:
-            return CONTEXT_RWLOCK_TRYRDLOCK;
-        case CAT_RWLOCK_TRYWRLOCK:
-            return CONTEXT_RWLOCK_TRYWRLOCK;
-        default:
             return CONTEXT_RWLOCK_NONE;
     }
 }

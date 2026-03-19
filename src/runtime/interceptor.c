@@ -25,6 +25,9 @@ static void _intercept_return_resume(mediator_t *m, context_t *ctx);
 static void _intercept_resume(mediator_t *m, context_t *ctx);
 static void _assert_runtime_ingress_event(type_id type,
                                           const capture_point *cp);
+static void _runtime_ingress_capture_with(context_t *ctx);
+static mediator_t *_runtime_ingress_before_with(context_t *ctx);
+static void _runtime_ingress_after_with(context_t *ctx);
 
 bool
 _lotto_loaded(void)
@@ -148,11 +151,17 @@ runtime_ingress(context_t *ctx)
         _intercept_resume(m, ctx);
 }
 
+static void
+_runtime_ingress_capture_with(context_t *ctx)
+{
+    runtime_ingress(ctx);
+}
+
 void
 runtime_ingress_capture(const ingress_capture *capture)
 {
     context_t ctx = runtime_context_from_ingress_capture(capture);
-    runtime_ingress(&ctx);
+    _runtime_ingress_capture_with(&ctx);
 }
 
 void
@@ -160,7 +169,7 @@ runtime_ingress_event(const context_origin *origin, type_id type,
                       const capture_point *cp)
 {
     ingress_capture capture =
-        runtime_ingress_capture_base(origin, type, cp, CAT_NONE);
+        runtime_ingress_capture_base(origin, type, cp);
     _assert_runtime_ingress_event(type, cp);
     runtime_ingress_capture(&capture);
 }
@@ -182,13 +191,18 @@ runtime_ingress_before(context_t *ctx)
     return m;
 }
 
+static mediator_t *
+_runtime_ingress_before_with(context_t *ctx)
+{
+    return runtime_ingress_before(ctx);
+}
+
 mediator_t *
 runtime_ingress_capture_before(const ingress_capture *capture)
 {
-    ingress_capture local = *capture;
-    local.phase           = CONTEXT_PHASE_BEFORE;
-    context_t ctx = runtime_context_from_ingress_capture(&local);
-    return runtime_ingress_before(&ctx);
+    ASSERT(capture->phase == CONTEXT_PHASE_BEFORE);
+    context_t ctx = runtime_context_from_ingress_capture(capture);
+    return _runtime_ingress_before_with(&ctx);
 }
 
 mediator_t *
@@ -196,7 +210,7 @@ runtime_ingress_event_before(const context_origin *origin, type_id type,
                              const capture_point *cp)
 {
     ingress_capture capture = runtime_ingress_capture_base_phase(
-        origin, type, cp, CONTEXT_PHASE_BEFORE, CAT_NONE);
+        origin, type, cp, CONTEXT_PHASE_BEFORE);
     _assert_runtime_ingress_event(type, cp);
     return runtime_ingress_capture_before(&capture);
 }
@@ -215,13 +229,18 @@ runtime_ingress_after(context_t *ctx)
     _intercept_return_resume(m, ctx);
 }
 
+static void
+_runtime_ingress_after_with(context_t *ctx)
+{
+    runtime_ingress_after(ctx);
+}
+
 void
 runtime_ingress_capture_after(const ingress_capture *capture)
 {
-    ingress_capture local = *capture;
-    local.phase           = CONTEXT_PHASE_AFTER;
-    context_t ctx         = runtime_context_from_ingress_capture(&local);
-    runtime_ingress_after(&ctx);
+    ASSERT(capture->phase == CONTEXT_PHASE_AFTER);
+    context_t ctx = runtime_context_from_ingress_capture(capture);
+    _runtime_ingress_after_with(&ctx);
 }
 
 void
@@ -229,7 +248,7 @@ runtime_ingress_event_after(const context_origin *origin, type_id type,
                             const capture_point *cp)
 {
     ingress_capture capture = runtime_ingress_capture_base_phase(
-        origin, type, cp, CONTEXT_PHASE_AFTER, CAT_NONE);
+        origin, type, cp, CONTEXT_PHASE_AFTER);
     _assert_runtime_ingress_event(type, cp);
     runtime_ingress_capture_after(&capture);
 }

@@ -16,7 +16,6 @@
 #include <lotto/runtime/ingress_events.h>
 #include <lotto/runtime/mediator.h>
 #include <lotto/runtime/memaccess_payload.h>
-#include <lotto/runtime/module_event_category.h>
 #include <lotto/util/macros.h>
 
 /*******************************************************************************
@@ -56,27 +55,12 @@ void runtime_ingress_capture_after(const ingress_capture *capture);
 void runtime_ingress_event_after(const context_origin *origin, type_id type,
                                  const capture_point *cp);
 
-static inline context_t
-runtime_ingress_finalize_context(context_t ctx, category_t fallback_cat)
-{
-    return context_finalize_category(ctx, fallback_cat);
-}
-
 static inline ingress_capture
 runtime_ingress_module_capture_base(const context_origin *origin,
                                     const capture_point *cp)
 {
     ASSERT(cp != NULL);
-    return runtime_ingress_capture_base(origin, cp->src_type, cp, CAT_NONE);
-}
-
-static inline ingress_capture
-runtime_ingress_module_capture(const context_origin *origin,
-                               const capture_point *cp, category_t cat)
-{
-    ingress_capture capture = runtime_ingress_module_capture_base(origin, cp);
-    capture.fallback_cat    = cat;
-    return capture;
+    return runtime_ingress_capture_base(origin, cp->src_type, cp);
 }
 
 static inline ingress_capture
@@ -87,14 +71,6 @@ runtime_ingress_module_capture_auto(const context_origin *origin,
     ASSERT(context_event_category(capture.type) != CAT_NONE ||
            context_event_category(capture.src_type) != CAT_NONE);
     return capture;
-}
-
-static inline void
-runtime_ingress_module_submit(const context_origin *origin,
-                              const capture_point *cp, category_t cat)
-{
-    ingress_capture capture = runtime_ingress_module_capture(origin, cp, cat);
-    runtime_ingress_capture(&capture);
 }
 
 static inline void
@@ -110,16 +86,8 @@ runtime_ingress_module_submit_event(const context_origin *origin,
                                     const capture_point *cp, type_id type)
 {
     ingress_capture capture =
-        runtime_ingress_capture_base(origin, type, cp, CAT_NONE);
+        runtime_ingress_capture_base(origin, type, cp);
     runtime_ingress_capture(&capture);
-}
-
-static inline mediator_t *
-runtime_ingress_module_submit_before(const context_origin *origin,
-                                     const capture_point *cp, category_t cat)
-{
-    ingress_capture capture = runtime_ingress_module_capture(origin, cp, cat);
-    return runtime_ingress_capture_before(&capture);
 }
 
 static inline mediator_t *
@@ -128,22 +96,6 @@ runtime_ingress_module_submit_before_auto(const context_origin *origin,
 {
     ingress_capture capture = runtime_ingress_module_capture_auto(origin, cp);
     return runtime_ingress_capture_before(&capture);
-}
-
-static inline void
-runtime_ingress_module_submit_after(const context_origin *origin,
-                                    const capture_point *cp, category_t cat)
-{
-    ingress_capture capture = runtime_ingress_module_capture(origin, cp, cat);
-    runtime_ingress_capture_after(&capture);
-}
-
-static inline void
-runtime_ingress_module_submit_after_dynamic(const context_origin *origin,
-                                            const capture_point *cp,
-                                            category_t cat)
-{
-    runtime_ingress_module_submit_after(origin, cp, cat);
 }
 
 static inline void
@@ -169,13 +121,11 @@ runtime_ingress_memaccess_capture(const context_origin *origin,
 {
     context_memaccess_event_t event = context_memaccess_event_from_source(
         cp->src_type, cp->payload,
-        after ? CONTEXT_PHASE_AFTER : CONTEXT_PHASE_BEFORE, CAT_NONE);
+        after ? CONTEXT_PHASE_AFTER : CONTEXT_PHASE_BEFORE);
     ingress_capture capture = runtime_ingress_module_capture_base(origin, cp);
     capture.phase = after ? CONTEXT_PHASE_AFTER : CONTEXT_PHASE_BEFORE;
-    capture.type         = context_memaccess_type_from_event(event);
-    capture.fallback_cat = context_memaccess_category_from_event(event);
+    capture.type  = context_memaccess_type_from_event(event);
     ASSERT(capture.type != 0);
-    ASSERT(capture.fallback_cat != CAT_NONE);
     return capture;
 }
 

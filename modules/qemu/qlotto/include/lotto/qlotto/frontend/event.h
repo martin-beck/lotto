@@ -14,8 +14,9 @@
 #include <lotto/base/map.h>
 #include <lotto/modules/deadlock/events.h>
 #include <lotto/runtime/capture_point.h>
+#include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/ingress_events.h>
-#include <lotto/runtime/module_event_category.h>
+#include <lotto/runtime/module_events.h>
 
 #define EVENT_QLOTTO_EXIT 196
 
@@ -25,7 +26,7 @@ typedef struct qlotto_exit_event {
 
 typedef struct event_s {
     mapitem_t ti;
-    category_t cat;
+    type_id type;
     char *func_name;
 } eventi_t;
 
@@ -34,10 +35,21 @@ typedef struct event_context_s {
     eventi_t *event;
 } event_context_t;
 
-void qlotto_add_event(map_t *emap, uint64_t e_pc, category_t cat,
+void qlotto_add_event(map_t *emap, uint64_t e_pc, type_id type,
                       char *func_name);
 void qlotto_del_event(map_t *emap, uint64_t e_pc);
 eventi_t *qlotto_get_event(map_t *emap, uint64_t e_pc);
+
+static inline void
+qlotto_context_set_event(context_t *ctx, type_id type, type_id src_type,
+                         context_phase_t phase)
+{
+    ctx->type     = type;
+    ctx->src_type = src_type;
+    ctx->cp       = NULL;
+    ctx->phase    = phase;
+    ctx->cat      = context_event_category(type != 0 ? type : src_type);
+}
 
 static inline void
 qlotto_context_set_semantics(context_t *ctx, category_t cat)
@@ -110,8 +122,16 @@ qlotto_context_set_semantics(context_t *ctx, category_t cat)
             ctx->phase    = CONTEXT_PHASE_AFTER;
             break;
         case CAT_SYS_YIELD:
-            ctx->type     = EVENT_SYS_YIELD;
-            ctx->src_type = EVENT_SYS_YIELD;
+            qlotto_context_set_event(ctx, EVENT_SYS_YIELD, EVENT_SYS_YIELD,
+                                     CONTEXT_PHASE_EVENT);
+            break;
+        case CAT_REGION_IN:
+            qlotto_context_set_event(ctx, EVENT_REGION_IN, EVENT_REGION_IN,
+                                     CONTEXT_PHASE_EVENT);
+            break;
+        case CAT_REGION_OUT:
+            qlotto_context_set_event(ctx, EVENT_REGION_OUT, EVENT_REGION_OUT,
+                                     CONTEXT_PHASE_EVENT);
             break;
         default:
             break;

@@ -13,14 +13,14 @@
  *******************************************************************************/
 
 void
-qlotto_add_event(map_t *emap, uint64_t e_pc, category_t cat, char *func_name)
+qlotto_add_event(map_t *emap, uint64_t e_pc, type_id type, char *func_name)
 {
     eventi_t *event = (eventi_t *)map_find(emap, e_pc);
     if (NULL != event)
         return;
 
     event            = (eventi_t *)map_register(emap, e_pc);
-    event->cat       = cat;
+    event->type      = type;
     event->func_name = func_name;
     // logger_infof( "Event added 0x%lx\n", b_pc);
 }

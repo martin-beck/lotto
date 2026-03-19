@@ -4,6 +4,7 @@
  */
 /* IWYU pragma: begin_keep */
 #include "dice/events/memaccess.h"
+#include "dice/events/pthread.h"
 #include "dice/events/stacktrace.h"
 #include "lotto/base/cappt.h"
 #include "lotto/base/context.h"
@@ -48,7 +49,7 @@
 #include "lotto/runtime/capture_point.h"
 #include "lotto/runtime/events.h"
 #include "lotto/runtime/ingress_events.h"
-#include "lotto/runtime/module_event_category.h"
+#include "lotto/runtime/module_events.h"
 #include "lotto/sys/fcntl.h"
 #include "lotto/sys/memory.h"
 #include "lotto/sys/now.h"
