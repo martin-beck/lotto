@@ -94,7 +94,10 @@ static inline mediator_t *
 runtime_ingress_module_submit_before_auto(const context_origin *origin,
                                           const capture_point *cp)
 {
-    ingress_capture capture = runtime_ingress_module_capture_auto(origin, cp);
+    ingress_capture capture =
+        runtime_ingress_capture_base_phase(origin, EVENT_CALL, cp,
+                                           CONTEXT_PHASE_BEFORE);
+    ASSERT(context_event_category(capture.src_type) != CAT_NONE);
     return runtime_ingress_capture_before(&capture);
 }
 
@@ -102,7 +105,10 @@ static inline void
 runtime_ingress_module_submit_after_auto(const context_origin *origin,
                                          const capture_point *cp)
 {
-    ingress_capture capture = runtime_ingress_module_capture_auto(origin, cp);
+    ingress_capture capture =
+        runtime_ingress_capture_base_phase(origin, EVENT_CALL, cp,
+                                           CONTEXT_PHASE_AFTER);
+    ASSERT(context_event_category(capture.src_type) != CAT_NONE);
     runtime_ingress_capture_after(&capture);
 }
 
