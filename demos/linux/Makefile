@@ -23,6 +23,8 @@ INCLUDES = \
 	-I ../../build/include \
 	-I ../../include \
 	-I ../../deps/dice/deps/libvsync/include \
+	-I ../../modules/qemu/include \
+	-I ../../modules/yield/include \
 
 help:
 	@echo "Help:"
