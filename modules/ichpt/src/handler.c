@@ -7,7 +7,7 @@
  ******************************************************************************/
 
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/state.h>
 #include <lotto/modules/ichpt/ichpt.h>

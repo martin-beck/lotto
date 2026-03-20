@@ -12,9 +12,9 @@ set(ENGINE_RUNTIME_SRCS
     statemgr.c
     prng.c
     engine.c
+    plan.c
     sequencer.c
     recorder.c
-    dispatcher.c
     clock.c
     creation.c
     module.c)
@@ -38,6 +38,7 @@ target_link_libraries(lotto-driver-engine.o PRIVATE lotto.h lotto-src.h dice.h)
 # Testing compatibility targets used by unit and racket test CMake files.
 make_units(engine "")
 target_sources(engine_state_testing.o PRIVATE catmgr.c)
+target_sources(engine_sequencer_testing.o PRIVATE plan.c)
 
 add_library(brokers_testing.o OBJECT catmgr.c statemgr.c)
 target_compile_definitions(brokers_testing.o PUBLIC -DLOTTO_TEST)

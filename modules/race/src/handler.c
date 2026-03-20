@@ -4,7 +4,7 @@
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "state.h"
 #include <lotto/base/tidmap.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/ichpt/ichpt.h>
 #include <lotto/modules/race/race_result.h>

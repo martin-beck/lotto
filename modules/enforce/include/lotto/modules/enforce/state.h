@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <lotto/base/arg.h>
 #include <lotto/base/clk.h>
 #include <lotto/base/context.h>
 #include <lotto/base/stable_address.h>

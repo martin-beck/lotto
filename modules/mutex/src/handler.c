@@ -1,7 +1,7 @@
 #include <errno.h>
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "state.h"
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
@@ -230,7 +230,7 @@ _mutex_handle(const context_t *ctx, event_t *e)
 REGISTER_SEQUENCER_HANDLER(_mutex_handle)
 
 LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
-    const context_t *ctx = (context_t *)as_any(v);
+    const context_t *ctx = (const context_t *)md;
     ASSERT(ctx);
 
     switch (context_mutex_event(ctx)) {

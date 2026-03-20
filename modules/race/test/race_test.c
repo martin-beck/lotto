@@ -1,5 +1,5 @@
 #include <dice/events/memaccess.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/race/race_result.h>

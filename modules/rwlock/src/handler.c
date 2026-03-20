@@ -1,7 +1,7 @@
 #include <errno.h>
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "state.h"
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
@@ -94,7 +94,7 @@ _rwlock_handle(const context_t *ctx, event_t *e)
 REGISTER_SEQUENCER_HANDLER(_rwlock_handle)
 
 LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
-    context_t *ctx = (context_t *)as_any(v);
+    context_t *ctx = (context_t *)md;
     ASSERT(ctx);
 
     switch (context_rwlock_event(ctx)) {

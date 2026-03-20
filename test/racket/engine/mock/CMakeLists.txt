@@ -9,7 +9,7 @@ add_mock(
             lotto/engine/statemgr.h #
             lotto/engine/sequencer.h #
             lotto/engine/prng.h #
-            lotto/engine/dispatcher.h #
+            lotto/engine/sequencer.h #
             lotto/engine/recorder.h #
     EXCLUDE io.h
             logger.h
@@ -41,7 +41,7 @@ add_binding(
 add_binding(
     TARGET sequencer.rkt
     INCLUDE lotto/engine/sequencer.h lotto/base/trace_flat.h
-            lotto/engine/recorder.h lotto/engine/dispatcher.h
+            lotto/engine/recorder.h lotto/engine/sequencer.h
     EXCLUDE sys/types.h)
 add_library(mocked_sequencer SHARED)
 target_link_libraries(

@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include "state.h"
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/sys/logger_block.h>
@@ -15,7 +15,7 @@ static struct event_data {
     uint64_t alarm;
 } _event_data;
 LOTTO_SUBSCRIBE_SEQUENCER_RESUME(EVENT_SEQUENCER_RESUME, {
-    const context_t *ctx = as_any(v);
+    const context_t *ctx = (const context_t *)md;
     if (ctx) {
         _event_data.id = ctx->id;
     }

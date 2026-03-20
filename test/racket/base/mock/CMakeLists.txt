@@ -28,7 +28,7 @@ add_binding(
 
 add_binding(
     TARGET plan.rkt
-    INCLUDE lotto/base/plan.h
+    INCLUDE lotto/engine/plan.h
     EXCLUDE sys/types.h)
 
 add_binding(

@@ -293,15 +293,9 @@ pub unsafe extern "C" fn publish_execute(
     raw::ps_err_PS_OK
 }
 
-/// Publish an execute event from a raw Lotto value.
-///
-/// # Safety
-///
-/// The caller must ensure `v` contains a valid `context_t` payload.
-pub unsafe fn publish_execute_value(v: raw::value) {
-    let ctx = &*(Value::from(v).as_any() as *const raw::context_t);
+pub unsafe fn publish_execute_ctx(ctx: *const raw::context_t) {
+    let ctx = &*ctx;
 
-    // For [`Handler::posthandle`] interface.
     {
         let mut handlers = crate::engine::handler::HANDLER_LIST
             .try_lock()
@@ -312,7 +306,6 @@ pub unsafe fn publish_execute_value(v: raw::value) {
         }
     }
 
-    // For [`ExecuteHandler`].
     let util_data = &mut crate::engine::handler::ENGINE_DATA
         .try_lock()
         .expect("single threaded");
@@ -352,6 +345,16 @@ pub unsafe fn publish_execute_value(v: raw::value) {
             }
         }
     }
+}
+
+/// Publish an execute event from a raw Lotto value.
+///
+/// # Safety
+///
+/// The caller must ensure `v` contains a valid `context_t` payload.
+pub unsafe fn publish_execute_value(v: raw::value) {
+    let ctx = Value::from(v).as_any() as *const raw::context_t;
+    publish_execute_ctx(ctx);
 }
 
 /// Legacy no-op kept for old call sites. Subscriptions now live in the C glue.

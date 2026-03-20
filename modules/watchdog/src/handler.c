@@ -1,6 +1,6 @@
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 #include "state.h"
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/prng.h>
 #include <lotto/modules/yield/context_payload.h>
 #include <lotto/runtime/memaccess_payload.h>

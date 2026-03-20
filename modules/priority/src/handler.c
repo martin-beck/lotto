@@ -11,7 +11,7 @@
 #include "state.h"
 #include <dice/module.h>
 #include <lotto/base/tidmap.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/priority/context_payload.h>
 #include <lotto/modules/priority/events.h>

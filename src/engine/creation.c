@@ -2,7 +2,7 @@
 #define LOGGER_BLOCK  LOGGER_CUR_BLOCK
 #include <lotto/base/tidmap.h>
 #include <lotto/base/tidset.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/runtime/context_payload.h>
 #include <lotto/sys/assert.h>

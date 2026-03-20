@@ -6,10 +6,10 @@
 #include <time.h>
 
 #include <lotto/base/context.h>
-#include <lotto/base/plan.h>
+#include <lotto/engine/plan.h>
 #include <lotto/base/record.h>
 #include <lotto/engine/catmgr.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/runtime/context_payload.h>
 #include <lotto/runtime/ingress.h>
@@ -171,14 +171,14 @@ mediator_capture(mediator_t *m, context_t *ctx)
             return false;
         case 1:
             ENSURE(context_effective_category(ctx) == CAT_RSRC_ACQUIRING);
-            m->plan = (plan_t){
+            m->plan = (struct plan){
                 .next    = ctx->id,
                 .actions = ACTION_CONTINUE,
             };
             return true;
         default:
             ENSURE(context_effective_category(ctx) == CAT_CALL);
-            m->plan = (plan_t){
+            m->plan = (struct plan){
                 .next    = ANY_TASK,
                 .actions = ACTION_RETURN | ACTION_YIELD | ACTION_RESUME,
             };

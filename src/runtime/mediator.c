@@ -214,7 +214,7 @@ mediator_disable_registration()
 }
 
 static void
-_plan_optimize(plan_t *plan, const context_t *ctx,
+_plan_optimize(struct plan *plan, const context_t *ctx,
                mediator_optimization_t optimization)
 {
     if (plan->next != ctx->id ||
@@ -408,7 +408,7 @@ mediator_resume(mediator_t *m, context_t *ctx)
 static inline bool
 _should_resume(const mediator_t *m)
 {
-    action_t a = plan_next(m->plan);
+    enum action a = plan_next(m->plan);
     return a == ACTION_RESUME || a == ACTION_YIELD;
 }
 

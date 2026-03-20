@@ -3,7 +3,7 @@
 
 #define LOGGER_BLOCK LOGGER_CUR_BLOCK
 
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/join/context_payload.h>
 #include <lotto/modules/join/events.h>

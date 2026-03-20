@@ -2,7 +2,7 @@
 #include "state.h"
 #include <lotto/base/reason.h>
 #include <lotto/base/tidbag.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/prng.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>

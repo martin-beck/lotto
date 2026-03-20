@@ -6,7 +6,7 @@
 #define LOTTO_ENGINE_H
 
 #include <lotto/base/context.h>
-#include <lotto/base/plan.h>
+#include <lotto/engine/plan.h>
 #include <lotto/base/reason.h>
 #include <lotto/base/trace.h>
 
@@ -28,7 +28,7 @@ int engine_fini(const context_t *ctx, reason_t reason);
  *
  * The action has to be fulfilled following the expected contract.
  */
-plan_t engine_capture(const context_t *ctx);
+struct plan engine_capture(const context_t *ctx);
 
 /**
  * Informs engine that task is resuming after an ACTION_YIELD.

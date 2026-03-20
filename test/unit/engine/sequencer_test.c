@@ -4,10 +4,8 @@
 #include <string.h>
 
 #include <dice/events/memaccess.h>
-#include <lotto/base/cappt.h>
 #include <lotto/base/context.h>
 #include <lotto/base/trace_flat.h>
-#include <lotto/engine/dispatcher.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/recorder.h>
 #include <lotto/engine/sequencer.h>
@@ -49,8 +47,8 @@ typedef struct {
 } mock_t;
 static mock_t mock;
 
-task_id
-dispatch_event(const context_t *ctx, event_t *e)
+bool
+sequencer_dispatch_override(const context_t *ctx, event_t *e, task_id *next)
 {
     assert(mock.expect.ctx);
     assert(memcmp(mock.expect.ctx, ctx, sizeof(context_t)) == 0);
@@ -60,7 +58,8 @@ dispatch_event(const context_t *ctx, event_t *e)
     mock.expect.ctx  = NULL;
     mock.expect.skip = false;
 
-    return mock.next;
+    *next = mock.next;
+    return true;
 }
 void
 scheduler_postprocess(const context_t *ctx)
@@ -209,7 +208,7 @@ test_main_task()
     expect_process(ctx, false);
     mock.next  = tid;
     mock.now   = 5 * NOW_SECOND;
-    plan_t act = sequencer_capture(ctx);
+    struct plan act = sequencer_capture(ctx);
     assert(act.next == tid);
     // assert(act.reason == REASON_CALL);
     assert(act.actions == (ACTION_WAKE | ACTION_YIELD | ACTION_RESUME));
@@ -229,7 +228,7 @@ test_replay()
     record_t *r          = NULL;
     context_t *ctx_tid   = NULL;
     context_t *ctx_other = NULL;
-    plan_t plan          = {0};
+    struct plan plan     = {0};
 
     trace_t *t = trace_flat_create(NULL);
 
@@ -327,7 +326,7 @@ test_record()
     task_id other  = 2;
     record_t *r    = NULL;
     context_t *ctx = NULL;
-    plan_t plan    = {0};
+    struct plan plan = {0};
 
     trace_t *t = trace_flat_create(NULL);
 

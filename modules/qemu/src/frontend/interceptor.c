@@ -5,7 +5,7 @@
 #include <lotto/base/context.h>
 #include <lotto/base/reason.h>
 #include <lotto/base/task_id.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/prng.h>
 #include <lotto/modules/qemu/cpustatecc.h>
 #include <lotto/modules/qemu/perf.h>

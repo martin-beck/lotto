@@ -62,7 +62,7 @@ LOTTO_ADVERTISE_TYPE(EVENT_ENGINE__BEFORE_CAPTURE)
  * contract checker using ghost state
  ******************************************************************************/
 
-CONTRACT(static void _check_plan(const context_t *ctx, plan_t p) {
+CONTRACT(static void _check_plan(const context_t *ctx, struct plan p) {
     context_core_event_t core = context_core_event(ctx);
     category_t cat            = context_effective_category(ctx);
     if (cat >= CAT_END_) {
@@ -144,7 +144,7 @@ engine_fini(const context_t *ctx, reason_t reason)
     return !success;
 }
 
-plan_t
+struct plan
 engine_capture(const context_t *ctx)
 {
     CONTRACT({
@@ -163,7 +163,7 @@ engine_capture(const context_t *ctx)
 
     struct value val = any(ctx);
     LOTTO_PUBLISH(EVENT_ENGINE__BEFORE_CAPTURE, val);
-    plan_t p = sequencer_capture(ctx);
+    struct plan p = sequencer_capture(ctx);
 
     CONTRACT({
         ASSERT(p.clk == _ghost.clk);

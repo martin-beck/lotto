@@ -9,7 +9,7 @@
 
 #include "state.h"
 #include <lotto/base/tidmap.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/prng.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/task_velocity/context_payload.h>

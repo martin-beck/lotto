@@ -7,7 +7,7 @@
 
 #include <dice/types.h>
 #include <lotto/base/context.h>
-#include <lotto/base/plan.h>
+#include <lotto/engine/plan.h>
 #include <lotto/runtime/ingress_capture.h>
 
 typedef enum mediator_optimization {
@@ -27,7 +27,7 @@ typedef enum mediator_registration {
 
 typedef struct mediator {
     task_id id;
-    plan_t plan;
+    struct plan plan;
     bool finito;
     mediator_optimization_t optimization;
     mediator_registration_t registration_status;

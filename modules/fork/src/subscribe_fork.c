@@ -7,7 +7,7 @@
 #include <dice/pubsub.h>
 #include <dice/self.h>
 #include <lotto/base/tidmap.h>
-#include <lotto/engine/dispatcher.h>
+#include <lotto/engine/sequencer.h>
 #include <lotto/engine/pubsub.h>
 #include <lotto/engine/statemgr.h>
 #include <lotto/modules/fork/events.h>

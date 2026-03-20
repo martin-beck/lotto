@@ -37,7 +37,7 @@
 #include "lotto/driver/trace.h"
 #include "lotto/driver/utils.h"
 #include "lotto/engine/catmgr.h"
-#include "lotto/engine/dispatcher.h"
+#include "lotto/engine/sequencer.h"
 #include "lotto/engine/events.h"
 #include "lotto/engine/prng.h"
 #include "lotto/engine/pubsub.h"
