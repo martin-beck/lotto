@@ -69,12 +69,15 @@ bool
 _as_expected(const context_t *ctx)
 {
     stable_address_t pc;
+    context_memaccess_event_t ma = context_memaccess_event(ctx);
+    bool has_memaccess           = ma != CONTEXT_MA_NONE;
     if ((MODE(TID) && !EQUAL(id)) || (MODE(CAT) && !EQUAL(cat)) ||
-        (MODE(PC) && !EQUAL_PC) || (MODE(ADDRESS) && !EQUAL_ADDR) ||
+        (MODE(PC) && !EQUAL_PC) ||
+        (MODE(ADDRESS) && has_memaccess && !EQUAL_ADDR) ||
         (MODE(SEED) && !EQUAL_SEED))
         return false;
 
-    switch (context_memaccess_event(ctx)) {
+    switch (ma) {
         case CONTEXT_MA_BEFORE_READ:
         case CONTEXT_MA_BEFORE_AREAD:
         case CONTEXT_MA_BEFORE_WRITE:
@@ -121,16 +124,17 @@ static void
 _report(const context_t *ctx)
 {
     category_t cat = context_effective_category(ctx);
+    context_memaccess_event_t ma = context_memaccess_event(ctx);
+    bool has_memaccess           = ma != CONTEXT_MA_NONE;
     stable_address_t pc;
     if (!EQUAL(id))
         REPORT_CTX("%lu", _, id);
     if (!EQUAL(cat))
         REPORT_CTX("%s", category_str, cat);
-    if (MODE(ADDRESS) && !EQUAL_ADDR)
+    if (MODE(ADDRESS) && has_memaccess && !EQUAL_ADDR)
         REPORT("%lx", _, addr, enforce_state()->addr, context_memaccess_addr(ctx));
     if (MODE(DATA) &&
-        (context_memaccess_event(ctx) == CONTEXT_MA_BEFORE_READ ||
-         context_memaccess_event(ctx) == CONTEXT_MA_BEFORE_AREAD)) {
+        (ma == CONTEXT_MA_BEFORE_READ || ma == CONTEXT_MA_BEFORE_AREAD)) {
         arg_t p = arg_ptr((void *)context_memaccess_addr(ctx));
         arg_t a = _read_val(&p, context_memaccess_size(ctx));
         if (enforce_state()->val.value.u64 != a.value.u64) {
@@ -141,7 +145,7 @@ _report(const context_t *ctx)
     if (MODE(PC) && !EQUAL_PC)
         REPORT_CTX("%p", (void *), pc);
 
-    if (cat == CAT_ENFORCE && !EQUAL_DATA) {
+    if (cat == CAT_ENFORCE && has_memaccess && !EQUAL_DATA) {
         struct value val = on();
         LOTTO_PUBLISH(EVENT_ENFORCE__VIOLATED, val);
         logger_errorf("MISMATCH [field: enforce, expected: ");
@@ -156,7 +160,7 @@ _report(const context_t *ctx)
         logger_errorf("]\n");
     }
 
-    if (!EQUAL_SEED) {
+    if (MODE(SEED) && !EQUAL_SEED) {
         REPORT("%lu", _, seed, enforce_state()->seed, prng_seed());
     }
 }
@@ -166,6 +170,9 @@ LOTTO_ADVERTISE_TYPE(EVENT_ENFORCE__VIOLATED)
 void
 _save(const context_t *ctx, const event_t *e)
 {
+    context_memaccess_event_t ma = context_memaccess_event(ctx);
+    bool has_memaccess           = ma != CONTEXT_MA_NONE;
+
     switch (context_effective_category(ctx)) {
         case CAT_BEFORE_READ:
         case CAT_BEFORE_AREAD:
@@ -196,7 +203,7 @@ _save(const context_t *ctx, const event_t *e)
     enforce_state()->clk = e->clk;
     if (MODE(CAT) || MODE(TID) || MODE(ADDRESS)) {
         enforce_state()->ctx = *ctx;
-        if (MODE(ADDRESS)) {
+        if (MODE(ADDRESS) && has_memaccess) {
             enforce_state()->addr = context_memaccess_addr(ctx);
         }
     }
