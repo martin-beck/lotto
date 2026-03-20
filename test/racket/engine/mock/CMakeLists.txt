@@ -36,7 +36,9 @@ add_binding(
             lotto/driver/events.h #
             lotto/engine/engine.h #
             lotto/engine/sequencer.h #
-    EXCLUDE sys/types.h)
+    EXCLUDE sys/types.h
+            unistd.h
+            bits/confname.h)
 
 add_binding(
     TARGET sequencer.rkt

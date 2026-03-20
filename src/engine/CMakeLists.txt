@@ -39,6 +39,8 @@ target_link_libraries(lotto-driver-engine.o PRIVATE lotto.h lotto-src.h dice.h)
 make_units(engine "")
 target_sources(engine_state_testing.o PRIVATE catmgr.c)
 target_sources(engine_sequencer_testing.o PRIVATE plan.c)
+add_library(plan_testing.o OBJECT plan.c)
+target_compile_definitions(plan_testing.o PRIVATE -DLOTTO_TEST)
 
 add_library(brokers_testing.o OBJECT catmgr.c statemgr.c)
 target_compile_definitions(brokers_testing.o PUBLIC -DLOTTO_TEST)
